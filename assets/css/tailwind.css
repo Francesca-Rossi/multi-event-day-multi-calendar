@@ -1,0 +1,9 @@
+/* Importa i direttive di Tailwind CSS */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Stili base personalizzati */
+body {
+  @apply bg-gray-50 text-gray-900;
+}
