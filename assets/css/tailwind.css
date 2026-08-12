@@ -1,7 +1,4 @@
-/* Importa i direttive di Tailwind CSS */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* Stili base personalizzati */
 body {

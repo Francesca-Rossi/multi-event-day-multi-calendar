@@ -283,11 +283,171 @@ Questa task ha creato il composable per recuperare gli eventi dai calendari Goog
    - Formatta la data in italiano: "Lunedì 15 Gennaio 2024"
    - Usa le opzioni: weekday (giorno della settimana), day (giorno), month (mese), year (anno)
    
-   **Computed properties:**
-   - `isLoading`: True se `fetchState` è 'loading' (utile per mostrare uno spinner)
-   - `hasError`: True se `fetchState` è 'error' (utile per mostrare un messaggio di errore)
-   - `hasSuccess`: True se `fetchState` è 'success' (utile per abilitare/disabilitare bottoni)
-   - `hasEvents`: True se ci sono eventi nell'array (utile per mostrare "Nessun evento")
+    **Computed properties:**
+    - `isLoading`: True se `fetchState` è 'loading' (utile per mostrare uno spinner)
+    - `hasError`: True se `fetchState` è 'error' (utile per mostrare un messaggio di errore)
+    - `hasSuccess`: True se `fetchState` è 'success' (utile per abilitare/disabilitare bottoni)
+    - `hasEvents`: True se ci sono eventi nell'array (utile per mostrare "Nessun evento")
+
+---
+
+## Task 5 Completata: Settings Page
+
+Questa task ha creato la pagina delle impostazioni per gestire i calendari Google e l'autenticazione.
+
+### File creati:
+
+1. **`layouts/default.vue`** - Layout principale con navigazione
+   
+   **Struttura:**
+   - Header fisso con titolo dell'applicazione
+   - Navigation bar con link a Dashboard e Settings
+   - Contenitore principale per il contenuto delle pagine
+   - Stili Tailwind CSS per un design pulito e responsive
+
+2. **`pages/settings/index.vue`** - Pagina settings completa
+   
+   **Funzionalità implementate:**
+   
+   **Sezione Authentication Status:**
+   - Mostra lo stato di autenticazione Google (autenticato/non autenticato)
+   - Visualizza informazioni utente (nome, email, foto profilo) quando autenticati
+   - Pulsante "Sign In with Google" per avviare il flusso OAuth2
+   - Pulsante "Sign Out" per effettuare il logout
+   - Messaggi di errore durante l'autenticazione
+   
+   **Sezione Add Calendar:**
+   - Form per inserire il Calendar ID di Google
+   - Validazione client-side dell'ID calendario:
+     - Campo obbligatorio
+     - Lunghezza minima verificata
+     - Controllo duplicati (evita calendari già aggiunti)
+     - Formato accettabile (deve contenere '@' o iniziare con 'primary')
+   - Campo opzionale per il display name (nome visualizzato)
+   - Feedback visivo per errori di validazione
+   - Stato loading durante l'aggiunta
+   
+   **Sezione Configured Calendars:**
+   - Lista di tutti i calendari configurati
+   - Visualizza nome display e ID di ogni calendario
+   - Bottone modifica (pencil icon) per cambiare il display name
+   - Bottone rimuovi (trash icon) per eliminare il calendario
+   - Conferma prima di rimuovere un calendario
+   - Stato vuoto quando nessun calendario è configurato
+   - Salvataggio automatico in localStorage tramite useCalendarConfig
+
+3. **Dipendenze aggiunte:**
+   - `@nuxt/ui` - Component UI pre-costruiti per Nuxt 3
+   - Utilizzati componenti: `UCard`, `UInput`, `UButton`, `Icon`
+
+**Spiegazione del codice:**
+
+La pagina settings è organizzata in tre sezioni principali usando il layout default:
+
+**Header e Navigazione (layouts/default.vue):**
+- Il layout viene applicato automaticamente a tutte le pagine
+- Usa `<NuxtLink>` per la navigazione tra pagine (routing client-side)
+- Highlight visivo della pagina attiva con classi condizionali
+- Design semplice ma funzionale con header fisso in alto
+
+**Pagina Settings (pages/settings/index.vue):**
+
+*Gestione Autenticazione:*
+```javascript
+const { signIn, signOut, authState, user, errorMessage, isAuthenticated } = useGoogleAuth()
+```
+- De-struttura dal composable `useGoogleAuth` tutte le variabili necessarie
+- `isAuthenticated` determina quale sezione mostrare (login o info utente)
+- `authState` controlla lo stato di loading durante l'autenticazione
+- I pulsanti chiamano `handleSignIn()` e `handleSignOut()` che gestiscono gli errori
+
+*Form Aggiunta Calendario:*
+```javascript
+const validateCalendarId = () => {
+  errors.value = {}
+  const id = newCalendarId.value.trim()
+  
+  if (!id) {
+    errors.value.calendarId = 'Calendar ID is required'
+    return false
+  }
+  
+  // Altre validazioni...
+  return true
+}
+```
+- Funzione di validazione centralizzata
+- Resetta gli errori prima di ogni validazione
+- Controlla duplicati confrontando con `calendars.value`
+- Restituisce false se ci sono errori, bloccando l'invio del form
+
+*Gestione Lista Calendari:*
+```javascript
+const handleRemoveCalendar = (calendarId) => {
+  if (confirm(`Are you sure you want to remove this calendar?`)) {
+    removeCalendar(calendarId)
+    console.log('Calendar removed:', calendarId)
+  }
+}
+```
+- Usa `confirm()` nativo di browser per la conferma
+- Chiama `removeCalendar()` dal composable useCalendarConfig
+- Logga l'operazione in console per debug
+- La rimozione è immediata e persistente in localStorage
+
+*Editing Display Name:*
+```javascript
+const handleUpdateDisplayName = (calendar) => {
+  editingCalendarId.value = calendar.id
+  editingName.value = calendar.displayName || ''
+}
+```
+- Attiva la modalità edit per un calendario specifico
+- Salva l'ID del calendario e il nome corrente
+- L'utente può modificare il nome direttamente nell'interfaccia
+- Al salvaggio, chiama `updateDisplayName()` per aggiornare
+
+**Flusso completo dell'utente:**
+
+1. **Primo accesso:**
+   - Utente vede pagina settings vuota
+   - Sezione authentication mostra pulsante "Sign In with Google"
+   - Utente clicca e si autentica con Google
+
+2. **Aggiungere un calendario:**
+   - Dopo login, utente inserisce Calendar ID (es: "team@group.calendar.google.com")
+   - Inserisce opzionalmente un display name (es: "Team Calendar")
+   - Clicca "Add Calendar"
+   - Validazione client-side verifica formato e duplicati
+   - Se valido, il calendario viene aggiunto e salvato in localStorage
+   - Appare nella lista "Configured Calendars"
+
+3. **Gestire calendari:**
+   - Ogni calendario nella lista ha due bottoni: modifica e rimuovi
+   - Modifica: clicca pencil icon, cambia il nome, salva automaticamente
+   - Rimuovi: clicca trash icon, conferma con dialog, calendario rimosso
+
+4. **Logout:**
+   - Clicca "Sign Out" nella sezione authentication
+   - Le informazioni utente vengono svuotate
+   - I calendari rimangono salvati in localStorage (persistenza)
+
+**Perché usare @nuxt/ui?**
+
+Invece di creare tutti i componenti UI da zero con Tailwind CSS, abbiamo installato `@nuxt/ui` che offre:
+- Componenti pre-stilizzati e accessibili
+- Integrazione automatica con Tailwind CSS
+- Supporto per dark mode
+- Proprietà reattive pronte all'uso
+- Minor codice boilerplate
+
+Componenti usati:
+- `UCard`: Container con header, body e footer stilizzati
+- `UInput`: Input field con stati focus/error integrati
+- `UButton`: Bottoni con varianti (ghost, solid) e colori
+- `Icon`: Sistema di icone integrato (Heroicons)
+
+---
 
 ## Prerequisiti da completare:
 
@@ -308,10 +468,13 @@ Questa task ha creato il composable per recuperare gli eventi dai calendari Goog
 
 ## Prossime Task:
 
-- **Task 5**: Creare pagina `/settings` per configurare i calendari
 - **Task 6**: Creare pagina `/dashboard` per visualizzare gli eventi
-- **Task 6**: Creare pagina `/dashboard` per visualizzare gli eventi
-- **Task 5**: Creare pagina `/settings` per configurare i calendari
+- **Task 7**: Creare componente CalendarEventCard
+- **Task 8**: Aggiungere controlli di navigazione date
+- **Task 9**: Configurare file environment (.env.example)
+- **Task 10**: Scrivere test unitari e di integrazione
+- **Task 11**: Aggiornare documentazione
+- **Task 12**: Deploy in produzione
 
 ## Spiegazione del codice per principianti:
 
