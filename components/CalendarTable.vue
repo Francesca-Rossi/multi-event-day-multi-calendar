@@ -1,0 +1,115 @@
+<script setup lang="ts">
+import type { CalendarEntry } from '~/types/calendar'
+import type { GoogleCalendarEvent } from '~/types/calendar'
+import CalendarCell from './CalendarCell.vue'
+
+interface Props {
+  calendars: CalendarEntry[]
+  eventsByCalendar: Map<string, GoogleCalendarEvent[]>
+  isLoading: boolean
+  errorMessage?: string
+}
+
+const props = defineProps<Props>()
+
+/**
+ * Orario di inizio della tabella (08:00 secondo SPEC.md)
+ */
+const START_HOUR = 8
+
+/**
+ * Orario di fine della tabella (20:00 secondo SPEC.md)
+ */
+const END_HOUR = 20
+
+/**
+ * Genera array di ore dalle 08:00 alle 20:00 (13 righe totali)
+ * 
+ * Questo computed property crea una lista fissa di ore per le righe della tabella
+ * Secondo SPEC.md: Righe fisse dalle 08:00 alle 20:00, slot da 60 minuti (13 righe totali)
+ */
+const hours = computed(() => {
+  const result: number[] = []
+  for (let h = START_HOUR; h <= END_HOUR; h++) {
+    result.push(h)
+  }
+  return result
+})
+</script>
+
+<template>
+  <div class="w-full overflow-x-auto">
+    <!-- Loading State -->
+    <div v-if="isLoading" class="flex justify-center py-12">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+    </div>
+    
+    <!-- Error State -->
+    <div v-else-if="errorMessage" class="p-4 bg-red-50 border border-red-200 rounded-md text-red-700">
+      {{ errorMessage }}
+    </div>
+    
+    <!-- Empty State - Nessun calendario configurato -->
+    <div v-else-if="calendars.length === 0" class="text-center py-12">
+      <p class="text-gray-600 mb-2">Nessun calendario configurato</p>
+      <p class="text-sm text-gray-500">Vai alle impostazioni per aggiungere calendari</p>
+    </div>
+    
+    <!-- Tabella Oraria -->
+    <table v-else class="min-w-full bg-white border-collapse shadow-sm">
+      <!-- Header con nomi calendari -->
+      <thead>
+        <tr class="bg-gray-100 sticky top-0 z-10">
+          <th class="sticky left-0 z-20 bg-gray-100 px-4 py-3 text-left font-semibold border-r border-gray-300">
+            Ora
+          </th>
+          <th
+            v-for="c in calendars"
+            :key="c.id"
+            class="px-4 py-3 text-left font-semibold min-w-[200px] border-r border-gray-300 last:border-r-0"
+          >
+            {{ c.displayName || c.id }}
+          </th>
+        </tr>
+      </thead>
+      
+      <!-- Corpo della tabella con righe orarie -->
+      <tbody>
+        <tr
+          v-for="h in hours"
+          :key="h"
+          class="hover:bg-gray-50 transition-colors"
+        >
+          <!-- Colonna Ora (sticky per rimanere visibile durante scroll orizzontale) -->
+          <td class="sticky left-0 z-10 bg-white px-4 py-3 font-medium border-r border-gray-200 whitespace-nowrap">
+            {{ String(h).padStart(2, '0') }}:00
+          </td>
+          
+          <!-- Celle evento per ogni calendario -->
+          <CalendarCell
+            v-for="c in calendars"
+            :key="`${c.id}-${h}`"
+            :hour="h"
+            :events="eventsByCalendar.get(c.id) || []"
+            :calendar-id="c.id"
+          />
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</template>
+
+<style scoped>
+/* Stili aggiuntivi per migliorare la leggibilità */
+table {
+  border: 1px solid #e5e7eb;
+}
+
+th {
+  border-bottom: 2px solid #d1d5db;
+}
+
+td {
+  border-right: 1px solid #e5e7eb;
+}
+</style>

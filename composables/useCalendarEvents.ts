@@ -19,6 +19,7 @@
 
 import { ref, computed } from 'vue'
 import type { CalendarEntry, GoogleCalendarEvent } from '~/types/calendar'
+import { useRuntimeConfig } from '#imports'
 
 // ============================================================================
 // TIPI E INTERFACCIE
@@ -93,12 +94,12 @@ const API_TIMEOUT_MS = 30000 // 30 secondi
 // ============================================================================
 
 /**
- * Lista di tutti gli eventi recuperati
+ * Mappa degli eventi per calendario
  * 
- * Contiene eventi da tutti i calendari configurati
- * Gli eventi sono filtrati per la data selezionata e ordinati per orario
+ * Struttura: Map<calendarId, GoogleCalendarEvent[]>
+ * Utile per accedere rapidamente agli eventi di ogni calendario quando costruiamo la tabella oraria
  */
-const events = ref<GoogleCalendarEvent[]>([])
+const eventsByCalendar = ref<Map<string, GoogleCalendarEvent[]>>(new Map())
 
 /**
  * Data per cui sono stati recuperati gli eventi
@@ -157,10 +158,13 @@ const hasSuccess = computed(() => {
 /**
  * Controlla se ci sono eventi da visualizzare
  * 
- * @returns true se ci sono eventi, false altrimenti
+ * @returns true se almeno un calendario ha eventi, false altrimenti
  */
 const hasEvents = computed(() => {
-  return events.value.length > 0
+  for (const [, calendarEvents] of eventsByCalendar.value.entries()) {
+    if (calendarEvents.length > 0) return true
+  }
+  return false
 })
 
 // ============================================================================
@@ -275,16 +279,17 @@ async function fetchCalendarEvents(
 ): Promise<GoogleCalendarEvent[]> {
   // Costruisci l'URL dell'API
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`
-  
+
+  const config = useRuntimeConfig()
+
   // Aggiungi i parametri di query
   const params = new URLSearchParams({
-    key: process.env.NUXT_PUBLIC_GOOGLE_API_KEY || '',
+    key: config.public.googleApiKey || '',
     timeMin: startDateTime,
     timeMax: endDateTime,
     singleEvents: 'true', // Espandi le ricorrenze
     orderBy: 'startTime', // Ordina per orario di inizio
-    maxResults: 250, // Massimo eventi per richiesta
-    accessToken: token, // Token OAuth2
+    maxResults: '250', // Massimo eventi per richiesta
   })
   
   // Costruisci l'URL completo
@@ -352,7 +357,7 @@ async function fetchCalendarEvents(
  * 3. Formatta gli orari per la visualizzazione
  * 4. Calcola la durata degli eventi
  * 
- * @param allEvents - Tutti gli eventi da tutti i calendari
+ * @param allEvents - Tutti gli eventi da un singolo calendario
  * @param currentDate - La data corrente per filtrare gli eventi passati
  * @returns Lista di eventi filtrati e ordinati
  */
@@ -430,8 +435,8 @@ function formatDate(date: Date): string {
  * Questa funzione:
  * 1. Imposta lo stato di loading
  * 2. Fa una richiesta a ogni calendario
- * 3. Unisce tutti gli eventi in una lista
- * 4. Filtra e ordina gli eventi
+ * 3. Organizza gli eventi in una Map per calendarId
+ * 4. Filtra e ordina gli eventi per ogni calendario
  * 5. Aggiorna lo stato con il risultato
  * 
  * @param params - Parametri per il fetch (data, calendari, token)
@@ -464,31 +469,32 @@ async function fetchAllEvents(params: FetchEventsParams): Promise<FetchResult> {
     // Attendi tutte le richieste
     const results = await Promise.allSettled(promises)
     
-    // Estrai solo gli eventi di successo
-    const allEvents: GoogleCalendarEvent[] = []
+    // Costruisci MAPPA degli eventi per calendarId
+    const map = new Map<string, GoogleCalendarEvent[]>()
     
     results.forEach((result, index) => {
       const calendar = calendars[index]
       
       if (result.status === 'fulfilled') {
-        allEvents.push(...result.value)
+        // Elabora gli eventi (filtra e ordina)
+        const processedEvents = processEvents(result.value, date)
+        map.set(calendar.id, processedEvents)
       } else {
         console.warn(`[${COMPOSABLE_NAME}] Errore fetch calendario ${calendar.displayName}:`, result.reason)
+        // Imposta array vuoto per questo calendario
+        map.set(calendar.id, [])
       }
     })
     
-    // Elabora gli eventi (filtra e ordina)
-    const processedEvents = processEvents(allEvents, date)
-    
     // Aggiorna lo stato
-    events.value = processedEvents
+    eventsByCalendar.value = map
     selectedDate.value = date
     setFetchState('success')
     
-    console.log(`[${COMPOSABLE_NAME}] Fetch completato: ${processedEvents.length} eventi`)
+    console.log(`[${COMPOSABLE_NAME}] Fetch completato: ${map.size} calendari elaborati`)
     
     return {
-      events: processedEvents,
+      events: [],
       error: null,
       fetchState: 'success',
     }
@@ -563,19 +569,19 @@ export async function fetchTodayEvents(
  * Composable per gestire il fetch degli eventi dai calendari Google
  * 
  * @returns Oggetto con:
- * - events: Lista di eventi recuperati
+ * - eventsByCalendar: Map di eventi per calendarId
  * - selectedDate: Data per cui sono stati recuperati gli eventi
  * - fetchState: Stato corrente del fetch
  * - errorMessage: Messaggio di errore (se presente)
  * - isLoading: True se gli eventi sono in caricamento
  * - hasError: True se c'è stato un errore
  * - hasSuccess: True se gli eventi sono stati caricati con successo
- * - hasEvents: True se ci sono eventi da visualizzare
+ * - hasEvents: True se almeno un calendario ha eventi
  * - fetchAllEvents: Funzione per recuperare gli eventi
  * 
  * @example
  * // Usa il composable in un componente Vue
- * const { events, isLoading, fetchAllEvents } = useCalendarEvents()
+ * const { eventsByCalendar, isLoading, fetchAllEvents } = useCalendarEvents()
  * 
  * // Quando l'utente cambia la data
  * const handleDateChange = async (date: Date) => {
@@ -592,15 +598,16 @@ export async function fetchTodayEvents(
  * // Mostra un messaggio di errore
  * // <div v-if="hasError" class="error">{{ errorMessage }}</div>
  * 
- * // Mostra la lista di eventi
- * // <div v-for="event in events" :key="event.id">
- * //   {{ event.summary }} - {{ event.start.dateTime }}
- * // </div>
+ * // Usa la tabella con eventiByCalendar
+ * // <CalendarTable
+ * //   :calendars="calendarList"
+ * //   :events-by-calendar="eventsByCalendar"
+ * // />
  */
 export function useCalendarEvents() {
   return {
     // Stato
-    events,
+    eventsByCalendar,
     selectedDate,
     fetchState,
     errorMessage,
@@ -619,3 +626,4 @@ export function useCalendarEvents() {
     formatDate,
   }
 }
+
