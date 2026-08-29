@@ -10,9 +10,11 @@ export default defineNuxtConfig({
 
   runtimeConfig: {
     public: {
-      googleClientId: '',
-      googleApiKey: ''
-    }
+      // Le chiavi pubbliche sono accessibili sia client che server
+      googleClientId: '', // Mappa in automatico NUXT_PUBLIC_GOOGLE_CLIENT_ID
+    },
+    // Le chiavi definite qui sono PRIVATE e accessibili solo sul Server (Nitro)
+    googleClientSecret: '', // Mappa in automatico NUXT_GOOGLE_CLIENT_SECRET
   },
 
   modules: ['@nuxt/ui'],

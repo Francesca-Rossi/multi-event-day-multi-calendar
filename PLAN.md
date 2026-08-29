@@ -42,22 +42,25 @@ This project implements a calendar application that fetches and displays events 
 - Installed and configured Nuxt UI for pre-built components
 - Created default layout with navigation header
 
+### Task 6: Dashboard Page ✅
+- Created `/dashboard` route (pages/dashboard.vue)
+- Uses useCalendarEvents composable
+- Displays events for selected date
+- Header with today's date (Italian locale) and link to settings ⚙️
+- Login with Google if not authenticated; auto-fetch events on auth
+- Shows loading state and per-calendar error handling
+- Empty state when no calendars configured
+
+### Task 7: CalendarTable Component ✅
+- Created `components/CalendarTable.vue` (plus `CalendarCell.vue` and `EventChip.vue`)
+- Hourly slots from 08:00 to 20:00 (13 rows, 60-minute slots)
+- One column per configured calendar
+- Event cells shown when slot falls in `[start, end)` interval
+- Empty cells shown as `—`
+- Per-calendar error indicator ("⚠ Errore accesso") shown in column headers when a calendar returns 403/404, without blocking the others
+- Horizontal scroll on narrow screens
+
 ## Pending Tasks
-
-### Task 6: Dashboard Page
-- Create `/dashboard` route
-- Use useCalendarEvents composable
-- Display events for selected date
-- Add date navigation (previous/next day)
-- Show loading and error states
-- Handle empty state when no events
-
-### Task 7: CalendarEventCard Component
-- Create reusable event card component
-- Display event title, time, and calendar name
-- Color-code by calendar
-- Handle all-day events
-- Responsive design with Tailwind CSS
 
 ### Task 8: Date Navigation Controls
 - Implement date picker or arrow navigation
@@ -69,7 +72,6 @@ This project implements a calendar application that fetches and displays events 
 - Create .env.example file
 - Document required environment variables:
   - NUXT_PUBLIC_GOOGLE_CLIENT_ID
-  - NUXT_PUBLIC_GOOGLE_API_KEY
 - Add instructions for obtaining Google API credentials
 
 ### Task 10: Testing
@@ -113,12 +115,14 @@ multi-event-day-multi-calendar/
 ├── layouts/
 │   └── default.vue
 ├── pages/
-│   ├── index.vue
+│   ├── index.vue (pending)
 │   ├── settings/
 │   │   └── index.vue
-│   └── dashboard.vue (pending)
+│   └── dashboard.vue
 ├── components/
-│   └── CalendarEventCard.vue (pending)
+│   ├── CalendarTable.vue
+│   ├── CalendarCell.vue
+│   └── EventChip.vue
 ├── types/
 │   └── calendar.ts
 ├── nuxt.config.ts
@@ -140,9 +144,8 @@ multi-event-day-multi-calendar/
 - Requires Google Cloud Console setup for API credentials
 
 ## Next Steps
-1. Complete Task 6 (Dashboard Page)
-2. Create CalendarEventCard component (Task 7)
-3. Add date navigation controls (Task 8)
-4. Set up environment files (Task 9)
-5. Add comprehensive testing (Task 10)
-6. Deploy to production (Task 12)
+1. Add date navigation controls (Task 8)
+2. Set up environment files (Task 9)
+3. Add comprehensive testing (Task 10)
+4. Update documentation (Task 11)
+5. Deploy to production (Task 12)

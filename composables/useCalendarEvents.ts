@@ -19,7 +19,6 @@
 
 import { ref, computed } from 'vue'
 import type { CalendarEntry, GoogleCalendarEvent } from '~/types/calendar'
-import { useRuntimeConfig } from '#imports'
 
 // ============================================================================
 // TIPI E INTERFACCIE
@@ -127,6 +126,16 @@ const fetchState = ref<FetchState>('idle')
  * Esempi: "Errore di rete", "Token scaduto", "Calendario non trovato"
  */
 const errorMessage = ref<string>('')
+
+/**
+ * Mappa degli errori per calendario
+ *
+ * Struttura: Map<calendarId, string>
+ * Contiene il messaggio di errore per ogni calendario che non è stato
+ * possibile contattare (es. 403/404). Utile per mostrare un indicatore
+ * nella colonna corrispondente senza bloccare il resto della tabella.
+ */
+const errors = ref<Map<string, string>>(new Map())
 
 /**
  * Controlla se gli eventi sono stati caricati con successo
@@ -280,11 +289,8 @@ async function fetchCalendarEvents(
   // Costruisci l'URL dell'API
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`
 
-  const config = useRuntimeConfig()
-
   // Aggiungi i parametri di query
   const params = new URLSearchParams({
-    key: config.public.googleApiKey || '',
     timeMin: startDateTime,
     timeMax: endDateTime,
     singleEvents: 'true', // Espandi le ricorrenze
@@ -349,41 +355,73 @@ async function fetchCalendarEvents(
 }
 
 /**
+ * Risolve il valore di inizio/fine di un evento in un oggetto Date
+ * 
+ * Gestisce i due formati supportati dall'API di Google:
+ * - dateTime: timestamp completo (es. "2026-08-29T09:00:00+02:00")
+ * - date: solo data, eventi all-day (es. "2026-08-29"). Viene interpretata
+ *   come mezzanotte SOLO dell'ora locale, altrimenti "new Date('YYYY-MM-DD')"
+ *   la tratterebbe come mezzanotte UTC (00:00Z) che in Italia equivale alle
+ *   02:00 locali, facendo "spostare" gli all-day fuori dal giorno corretto.
+ * 
+ * @param value - Stringa data/ora dell'evento
+ * @returns Date corrispondente, oppure null se il valore è assente
+ */
+function parseEventDate(value: string | undefined): Date | null {
+  if (!value) return null
+
+  // Formato all-day: "YYYY-MM-DD" senza componente oraria
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
+
+  return new Date(value)
+}
+
+/**
  * Filtra e ordina gli eventi per la visualizzazione
  * 
  * Questa funzione:
- * 1. Rimuove gli eventi passati (già terminati)
+ * 1. Mantiene gli eventi che intersecano il giorno selezionato
+ *    (inclusi quelli già terminati e gli eventi all-day)
  * 2. Ordina gli eventi per orario di inizio
  * 3. Formatta gli orari per la visualizzazione
  * 4. Calcola la durata degli eventi
  * 
  * @param allEvents - Tutti gli eventi da un singolo calendario
- * @param currentDate - La data corrente per filtrare gli eventi passati
+ * @param currentDate - Il giorno di riferimento (si considerano solo gli eventi di quel giorno)
  * @returns Lista di eventi filtrati e ordinati
  */
 function processEvents(allEvents: GoogleCalendarEvent[], currentDate: Date): GoogleCalendarEvent[] {
   console.log(`[${COMPOSABLE_NAME}] Elaborazione ${allEvents.length} eventi`)
   
-  // Filtra gli eventi:
-  // - Escludi eventi terminati (end < now)
-  // - Includi eventi che iniziano dopo mezzanotte
+  // Estremi del giorno selezionato (ora locale)
+  const startOfDay = new Date(currentDate)
+  startOfDay.setHours(0, 0, 0, 0)
+  const endOfDay = new Date(currentDate)
+  endOfDay.setHours(23, 59, 59, 999)
+
+  // Filtra gli eventi: mantieni quelli che intersecano il giorno selezionato.
+  // Non si confronta con "adesso" per non nascondere gli eventi già terminati
+  // ma comunque appartenenti al giorno visualizzato.
   const filteredEvents = allEvents.filter((event: GoogleCalendarEvent) => {
-    const endTime = new Date(event.end?.dateTime || event.end?.date)
-    const startTime = new Date(event.start?.dateTime || event.start?.date)
-    
-    // Escludi eventi già terminati
-    if (endTime < currentDate) {
+    const startTime = parseEventDate(event.start?.dateTime ?? event.start?.date)
+    const endTime = parseEventDate(event.end?.dateTime ?? event.end?.date)
+
+    if (!startTime || !endTime) {
       return false
     }
-    
-    // Includi solo eventi che iniziano dopo mezzanotte
-    return startTime >= currentDate
+
+    // L'end di un all-day è la mezzanotte del giorno successivo (esclusiva),
+    // quindi `endTime > startOfDay` lo mantiene nel giorno selezionato.
+    return startTime <= endOfDay && endTime > startOfDay
   })
   
   // Ordina gli eventi per orario di inizio
   const sortedEvents = filteredEvents.sort((a: GoogleCalendarEvent, b: GoogleCalendarEvent) => {
-    const timeA = new Date(a.start?.dateTime || a.start?.date).getTime()
-    const timeB = new Date(b.start?.dateTime || b.start?.date).getTime()
+    const timeA = parseEventDate(a.start?.dateTime ?? a.start?.date)?.getTime() ?? 0
+    const timeB = parseEventDate(b.start?.dateTime ?? b.start?.date)?.getTime() ?? 0
     return timeA - timeB
   })
   
@@ -458,6 +496,9 @@ async function fetchAllEvents(params: FetchEventsParams): Promise<FetchResult> {
     // Imposta lo stato di loading
     setFetchState('loading')
     
+    // Azzera gli errori del fetch precedente
+    errors.value = new Map()
+    
     // Calcola l'intervallo di tempo per il fetch
     const timeRange = getTimeRangeForDate(date)
     
@@ -474,6 +515,12 @@ async function fetchAllEvents(params: FetchEventsParams): Promise<FetchResult> {
     
     results.forEach((result, index) => {
       const calendar = calendars[index]
+
+      if (!calendar) {
+      console.warn(`[${COMPOSABLE_NAME}] Calendario assente all'indice ${index}`)
+      return
+      }
+
       
       if (result.status === 'fulfilled') {
         // Elabora gli eventi (filtra e ordina)
@@ -481,7 +528,8 @@ async function fetchAllEvents(params: FetchEventsParams): Promise<FetchResult> {
         map.set(calendar.id, processedEvents)
       } else {
         console.warn(`[${COMPOSABLE_NAME}] Errore fetch calendario ${calendar.displayName}:`, result.reason)
-        // Imposta array vuoto per questo calendario
+        // Registra l'errore per questo calendario e imposta array vuoto
+        errors.value.set(calendar.id, result.reason instanceof Error ? result.reason.message : 'Errore sconosciuto')
         map.set(calendar.id, [])
       }
     })
@@ -611,6 +659,7 @@ export function useCalendarEvents() {
     selectedDate,
     fetchState,
     errorMessage,
+    errors,
     isLoading,
     hasError,
     hasSuccess,

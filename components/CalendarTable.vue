@@ -6,11 +6,15 @@ import CalendarCell from './CalendarCell.vue'
 interface Props {
   calendars: CalendarEntry[]
   eventsByCalendar: Map<string, GoogleCalendarEvent[]>
+  errors?: Map<string, string>
   isLoading: boolean
   errorMessage?: string
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  errors: () => new Map<string, string>(),
+  errorMessage: undefined,
+})
 
 /**
  * Orario di inizio della tabella (08:00 secondo SPEC.md)
@@ -68,7 +72,16 @@ const hours = computed(() => {
             :key="c.id"
             class="px-4 py-3 text-left font-semibold min-w-[200px] border-r border-gray-300 last:border-r-0"
           >
-            {{ c.displayName || c.id }}
+            <div class="flex flex-col gap-1">
+              <span>{{ c.displayName || c.id }}</span>
+              <span
+                v-if="errors.get(c.id)"
+                class="inline-flex items-center gap-1 text-xs font-medium text-red-700"
+                :title="errors.get(c.id)"
+              >
+                ⚠ Errore accesso
+              </span>
+            </div>
           </th>
         </tr>
       </thead>

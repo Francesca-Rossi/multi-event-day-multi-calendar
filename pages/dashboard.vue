@@ -4,7 +4,7 @@ import CalendarTable from '~/components/CalendarTable.vue'
 // Usa i composables per accedere a calendari, autenticazione e eventi
 const { calendars } = useCalendarConfig()
 const { accessToken, isAuthenticated, signIn } = useGoogleAuth()
-const { eventsByCalendar, isLoading, hasError, errorMessage, fetchTodayEvents, formatDate } = useCalendarEvents()
+const { eventsByCalendar, errors, isLoading, hasError, errorMessage, fetchTodayEvents, formatDate } = useCalendarEvents()
 
 /**
  * Gestisce il login con Google OAuth2
@@ -18,13 +18,13 @@ const handleSignIn = async () => {
 }
 
 /**
- * Watch per rilevare quando l\'utente si autentica
- * Quando diventa autenticato, carica automaticamente gli eventi
+ * Watch per rilevare quando l'utente si autentica o il token cambia
+ * Quando diventano disponibili, carica automaticamente gli eventi
  */
-watch(isAuthenticated, async (val) => {
-  if (val && accessToken.value) {
+watch([isAuthenticated, accessToken], async ([authOk, token]) => {
+  if (authOk && token) {
     console.log('Utente autenticato, caricamento eventi...')
-    await fetchTodayEvents(calendars.value, accessToken.value)
+    await fetchTodayEvents(calendars.value, token)
   }
 })
 
@@ -79,6 +79,7 @@ onMounted(async () => {
       <CalendarTable
         :calendars="calendars"
         :events-by-calendar="eventsByCalendar"
+        :errors="errors"
         :is-loading="isLoading"
         :error-message="hasError ? errorMessage : undefined"
       />

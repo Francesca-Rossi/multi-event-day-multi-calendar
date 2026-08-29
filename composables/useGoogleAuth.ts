@@ -61,20 +61,28 @@ const COMPOSABLE_NAME = 'useGoogleAuth'
 /**
  * Client ID di Google OAuth2
  * 
- * IMPORTANTE: Questo valore viene caricato da nuxt.config.ts
- * Devi configurare NUXT_PUBLIC_GOOGLE_CLIENT_ID nelle variabili d'ambiente
+ * IMPORTANTE: Questo valore viene letto da runtimeConfig.public.googleClientId
+ * che mappa automaticamente la variabile d'ambiente NUXT_PUBLIC_GOOGLE_CLIENT_ID
+ * definita in nuxt.config.ts
  * 
  * Esempio:
  * NUXT_PUBLIC_GOOGLE_CLIENT_ID=123456789-abcdefghijk.apps.googleusercontent.com
  */
-const GOOGLE_CLIENT_ID = process.env.NUXT_PUBLIC_GOOGLE_CLIENT_ID
+function getGoogleClientId(): string {
+  return (useRuntimeConfig().public.googleClientId as string) || ''
+}
 
 /**
  * Scope OAuth2 richiesti per leggere i calendari
  * 'openid' è necessario per il profilo utente
  * 'calendar' è necessario per leggere gli eventi
  */
-const OAUTH_SCOPES = 'openid email calendar'
+const OAUTH_SCOPES = [
+  'openid',
+  'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile',
+  'https://www.googleapis.com/auth/calendar' // <--- URL completo dello scope Calendar
+].join(' ')
 
 /**
  * URL dello script Google Identity Services (GSI)
@@ -135,6 +143,18 @@ const isAuthenticated = computed(() => {
   return authState.value === 'authenticated' && user.value !== null
 })
 
+/**
+ * Token di accesso OAuth2 dell'utente autenticato
+ * 
+ * Deriva direttamente da user.token per mantenere un'unica fonte di verità.
+ * È null quando l'utente non è autenticato o il token è scaduto.
+ * 
+ * @returns string | null
+ */
+const accessToken = computed(() => {
+  return user.value?.token ?? null
+})
+
 // ============================================================================
 // FUNZIONI UTILI
 // ============================================================================
@@ -185,7 +205,7 @@ async function loadGsiScript(): Promise<void> {
     }
 
     // Controlla se il Client ID è configurato
-    if (!GOOGLE_CLIENT_ID) {
+    if (!getGoogleClientId()) {
       console.error(`[${COMPOSABLE_NAME}] Client ID non configurato`)
       reject(new Error('Client ID non configurato'))
       return
@@ -249,7 +269,7 @@ async function initializeOAuthClient(): Promise<void> {
       // Crea il client OAuth2
       // google.accounts.oauth2.initTokenClient crea un client per gestire i token
       const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
+        client_id: getGoogleClientId(),
         scope: OAUTH_SCOPES,
         callback: handleOAuthResponse, // Callback quando l'utente si autentica
         error_callback: handleOAuthError, // Callback quando si verifica un errore
@@ -275,30 +295,32 @@ async function initializeOAuthClient(): Promise<void> {
  * 
  * @param response - La risposta di Google contenente il token
  */
-function handleOAuthResponse(response: { access_token: string; id_token: string }): void {
+async function handleOAuthResponse(response: { access_token: string }): void {
   console.log(`[${COMPOSABLE_NAME}] Risposta OAuth2 ricevuta`, response)
 
   try {
-    // Estrai il token di accesso (usato per le chiamate API)
     const accessToken = response.access_token
 
-    // Decodifica l'ID token per ottenere le informazioni dell'utente
-    // L'ID token è un JWT (JSON Web Token) che contiene informazioni sull'utente
-    const idTokenPayload = decodeJwt(response.id_token)
+    // Recupera le informazioni del profilo utente tramite l'endpoint UserInfo di Google
+    const userinfo = await $fetch<{ email: string; name: string; picture: string }>(
+      'https://www.googleapis.com/oauth2/v3/userinfo',
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      }
+    )
 
-    // Crea l'oggetto utente con le informazioni estratte
     user.value = {
       token: accessToken,
       profile: {
-        email: idTokenPayload.email,
-        name: idTokenPayload.name,
-        picture: idTokenPayload.picture,
+        email: userinfo.email,
+        name: userinfo.name,
+        picture: userinfo.picture,
       },
     }
 
-    // Imposta lo stato come autenticato
     setAuthState('authenticated')
-
     console.log(`[${COMPOSABLE_NAME}] Utente autenticato: ${user.value.profile.email}`)
   } catch (error) {
     console.error(`[${COMPOSABLE_NAME}] Errore elaborazione risposta OAuth2`, error)
@@ -434,7 +456,7 @@ function signIn(): void {
 
   // Ottieni il client OAuth2
   const tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_CLIENT_ID,
+    client_id: getGoogleClientId(),
     scope: OAUTH_SCOPES,
     callback: handleOAuthResponse,
     error_callback: handleOAuthError,
@@ -485,7 +507,7 @@ function signOut(): void {
  * 2. Caricare lo script GSI quando necessario
  */
 onMounted(() => {
-  console.log(`[${COMPOSable_NAME}] Montato - avvio inizializzazione`)
+  console.log(`[${COMPOSABLE_NAME}] Montato - avvio inizializzazione`)
   initialize()
 })
 
@@ -496,9 +518,10 @@ onMounted(() => {
 /**
  * Composable per gestire l'autenticazione OAuth2 con Google
  * 
- * @returns Oggetto con:
+* @returns Oggetto con:
  * - authState: Stato corrente dell'autenticazione
  * - user: Informazioni dell'utente autenticato
+ * - accessToken: Token di accesso OAuth2 (null se non autenticato)
  * - errorMessage: Messaggio di errore (se presente)
  * - isAuthenticated: true se l'utente è autenticato
  * - signIn: Funzione per avviare l'autenticazione
@@ -506,7 +529,7 @@ onMounted(() => {
  * 
  * @example
  * // Usa il composable in un componente Vue
- * const { authState, user, signIn, signOut } = useGoogleAuth()
+ * const { accessToken, isAuthenticated, signIn, signOut } = useGoogleAuth()
  * 
  * // Mostra il pulsante di login solo se non autenticato
  * // <button v-if="!isAuthenticated" @click="signIn">Accedi con Google</button>
@@ -519,6 +542,7 @@ export function useGoogleAuth() {
     // Stato
     authState,
     user,
+    accessToken,
     errorMessage,
     isAuthenticated,
 

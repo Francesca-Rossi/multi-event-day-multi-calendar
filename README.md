@@ -449,6 +449,97 @@ Componenti usati:
 
 ---
 
+## Task 6 Completata: Dashboard Page
+
+Questa task ha creato la pagina principale per visualizzare gli eventi giornalieri.
+
+### File creati/modificati:
+
+1. **`pages/dashboard.vue`** - Pagina dashboard principale
+
+**Responsabilità:**
+- Mostra la data odierna formattata in italiano (es. "Mercoledì 18 giugno 2025") nell'header
+- Link ⚙️ per tornare alle impostazioni
+- Se non autenticato: mostra bottone "Accedi con Google" centrato
+- Se autenticato: carica automaticamente gli eventi e mostra la tabella oraria
+- Stati di loading, errore e vuoto gestiti
+
+**Spiegazione del codice:**
+
+*Autenticazione e fetch automatico:*
+```javascript
+const { calendars } = useCalendarConfig()
+const { accessToken, isAuthenticated, signIn } = useGoogleAuth()
+const { eventsByCalendar, errors, isLoading, fetchTodayEvents, formatDate } = useCalendarEvents()
+```
+- Usa i tre composable: config calendari, autenticazione Google e fetch eventi
+- `watch(isAuthenticated)` carica gli eventi non appena l'utente si autentica
+- `onMounted` gestisce il caso in cui l'utente sia già autenticato al primo accesso
+
+*Header:*
+- Data odierna formattata in italiano con `formatDate(new Date())`
+- Link a `/settings` con icona ⚙️
+
+*Contenuto condizionale:*
+- `v-if="!isAuthenticated"` → bottone "Accedi con Google"
+- Altrimenti → `<CalendarTable>` con calendari, eventi ed errori
+
+---
+
+## Task 7 Completata: CalendarTable Component
+
+Questa task ha creato il componente tabella oraria che mostra gli eventi di tutti i calendari configurati.
+
+### File creati:
+
+1. **`components/CalendarTable.vue`** - Tabella oraria principale
+2. **`components/CalendarCell.vue`** - Singola cella evento
+3. **`components/EventChip.vue`** - Chip con il nome dell'evento
+
+**Responsabilità:**
+
+*CalendarTable.vue:*
+- Genera le righe orarie dalle `08:00` alle `20:00` (13 righe, slot da 60 minuti)
+- Una colonna per ogni calendario configurato
+- Header con i nomi visualizzati dei calendari
+- Scroll orizzontale su schermi stretti
+- Stati: loading (spinner), errore globale, nessun calendario configurato
+- Gestione errori per singolo calendario: se un calendario risponde 403/404, mostra "⚠ Errore accesso" nella sua colonna senza bloccare le altre
+
+*CalendarCell.vue:*
+- Trova l'evento attivo per un'ora specifica
+- Usa l'intervallo `[start, end)`: l'evento è attivo se `startHour <= hour < endHour`
+- Mostra l'`EventChip` se c'è un evento, altrimenti `—` in grigio
+
+*EventChip.vue:*
+- Visualizza il nome dell'evento in un chip colorato
+- Props: `eventName`, `backgroundColor`, `textColor`
+- Emette evento `click`
+
+**Prop del componente CalendarTable:**
+```typescript
+props: {
+  calendars: CalendarEntry[]
+  eventsByCalendar: Map<string, GoogleCalendarEvent[]>
+  errors: Map<string, string>       // errori per calendario (403/404)
+  isLoading: boolean
+  errorMessage?: string
+}
+```
+
+**Gestione errori per calendario:**
+
+In `useCalendarEvents` è stata aggiunta una `Map` `errors` che traccia gli errori di ogni singolo calendario:
+- Azzerata a ogni nuovo fetch
+- Popolata quando un calendario non risponde (es. 403/404)
+- In `CalendarTable`, se `errors.get(id)` è valorizzato, nell'header della colonna appare "⚠ Errore accesso" con il messaggio reale in `title`
+- Gli errori di un calendario non bloccano la visualizzazione degli altri
+
+**Bug fix:**
+- Corretto typo `COMPOSable_NAME` → `COMPOSABLE_NAME` in `composables/useGoogleAuth.ts` (evitava un errore runtime al mount)
+
+---
+
 ## Prerequisiti da completare:
 
 1. **Configurare Google Cloud Console**:
@@ -468,13 +559,12 @@ Componenti usati:
 
 ## Prossime Task:
 
-- **Task 6**: Creare pagina `/dashboard` per visualizzare gli eventi
-- **Task 7**: Creare componente CalendarEventCard
-- **Task 8**: Aggiungere controlli di navigazione date
-- **Task 9**: Configurare file environment (.env.example)
-- **Task 10**: Scrivere test unitari e di integrazione
-- **Task 11**: Aggiornare documentazione
-- **Task 12**: Deploy in produzione
+- **Task 8**: Creare pagina `/index` con redirect automatico
+- **Task 9**: Aggiungere controlli di navigazione date
+- **Task 10**: Configurare file environment (.env.example)
+- **Task 11**: Scrivere test unitari e di integrazione
+- **Task 12**: Aggiornare documentazione
+- **Task 13**: Deploy in produzione
 
 ## Spiegazione del codice per principianti:
 

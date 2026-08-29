@@ -10,14 +10,14 @@
       
       <div v-if="isAuthenticated" class="flex items-center space-x-4">
         <img 
-          :src="user?.picture || ''" 
+          :src="user?.profile?.picture || ''" 
           alt="User Avatar" 
           class="w-12 h-12 rounded-full"
-          v-if="user?.picture"
+          v-if="user?.profile?.picture"
         />
         <div>
-          <p class="text-sm font-medium text-gray-900">{{ user?.name }}</p>
-          <p class="text-sm text-gray-500">{{ user?.email }}</p>
+          <p class="text-sm font-medium text-gray-900">{{ user?.profile?.name }}</p>
+          <p class="text-sm text-gray-500">{{ user?.profile?.email }}</p>
         </div>
         <button
           @click="handleSignOut"
