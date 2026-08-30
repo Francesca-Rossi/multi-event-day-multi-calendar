@@ -295,7 +295,7 @@ async function initializeOAuthClient(): Promise<void> {
  * 
  * @param response - La risposta di Google contenente il token
  */
-async function handleOAuthResponse(response: { access_token: string }): void {
+async function handleOAuthResponse(response: { access_token: string }): Promise<void> {
   console.log(`[${COMPOSABLE_NAME}] Risposta OAuth2 ricevuta`, response)
 
   try {
@@ -378,8 +378,8 @@ function decodeJwt(token: string): {
       throw new Error('Token JWT invalido: formato sbagliato')
     }
 
-    // Prendi solo il payload (parte 2)
-    const payload = parts[1]
+    // Prendi solo il payload (parte 2, definita perché length === 3)
+    const payload = parts[1]!
 
     // Decodifica da base64url a stringa normale
     // base64url è simile a base64 ma usa caratteri diversi per essere URL-safe

@@ -540,6 +540,72 @@ In `useCalendarEvents` è stata aggiunta una `Map` `errors` che traccia gli erro
 
 ---
 
+## Task 8 Completata: Pagina `/index` (redirect)
+
+Questa task ha creato la pagina di avvio con redirect automatico.
+
+### File creati:
+
+1. **`pages/index.vue`** - Pagina di redirect automatico
+
+**Responsabilità:**
+- Determina la destinazione del primo avvio
+- Se sono configurati calendari (`hasCalendars`) → `navigateTo('/dashboard')`
+- Altrimenti → `navigateTo('/settings')`
+- Mostra un breve stato "Reindirizzamento..." durante la logica di redirect
+
+**Spiegazione del codice:**
+```javascript
+const { hasCalendars } = useCalendarConfig()
+onMounted(() => {
+  navigateTo(hasCalendars.value ? '/dashboard' : '/settings')
+})
+```
+- Usa il composable `useCalendarConfig` e la computed `hasCalendars`
+- Il redirect avviene in `onMounted` per permettere a `loadConfig()` di leggere i calendari da `localStorage` prima della decisione (con `ssr: false` tutto avviene lato client)
+
+---
+
+## Task 9 Completata: Navigazione Date
+
+Questa task ha aggiunto la navigazione tra le date nella dashboard.
+
+### File modificati:
+
+1. **`pages/dashboard.vue`** - Navigazione date nella dashboard
+
+**Responsabilità:**
+- Selettore data (input `type="date"`) + frecce ← / → nel header
+- Bottone "Oggi" per tornare rapidamente alla data odierna
+- Badge "Oggi" accanto alla data quando è selezionata la data corrente
+- Validazione del range: **nessuna data passata** e **nessuna data oltre 1 anno nel futuro**
+- Refetch automatico degli eventi al cambio data (rispettando autenticazione)
+
+**Spiegazione del codice:**
+
+*Stato e range:*
+```javascript
+const selectedDate = ref<Date>(new Date())
+const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+const maxDate = new Date(todayStart); maxDate.setFullYear(maxDate.getFullYear() + 1)
+```
+- `selectedDate` è la data visualizzata (default: oggi)
+- `todayStart` è il limite inferiore (data passata non ammessa)
+- `maxDate` è il limite superiore (oggi + 1 anno, oltre non si può navigare)
+
+*Navigazione:*
+- `shiftDate(days)` sposta la data di ±1 giorno con `selectDate()`
+- `selectDate(date)` clippa la data nel range valido `[todayStart, maxDate]`
+- Le frecce sono disabilitate ai bordi (`canGoPrev`, `canGoNext`)
+- L'input `type="date"` ha `min`/`max` e blocca valori fuori range
+
+*Fetch al cambio data:*
+- `watch(selectedDate)` ricarica gli eventi quando la data cambia
+- Il vecchio `fetchTodayEvents` è stato sostituito da `fetchEventsForDate(selectedDate.value, calendars, token)`
+- Il watch su `[isAuthenticated, accessToken]` e il fetch iniziale in `onMounted` usano la data selezionata
+
+---
+
 ## Prerequisiti da completare:
 
 1. **Configurare Google Cloud Console**:
@@ -559,8 +625,6 @@ In `useCalendarEvents` è stata aggiunta una `Map` `errors` che traccia gli erro
 
 ## Prossime Task:
 
-- **Task 8**: Creare pagina `/index` con redirect automatico
-- **Task 9**: Aggiungere controlli di navigazione date
 - **Task 10**: Configurare file environment (.env.example)
 - **Task 11**: Scrivere test unitari e di integrazione
 - **Task 12**: Aggiornare documentazione

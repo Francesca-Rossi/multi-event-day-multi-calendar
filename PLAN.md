@@ -60,13 +60,16 @@ This project implements a calendar application that fetches and displays events 
 - Per-calendar error indicator ("⚠ Errore accesso") shown in column headers when a calendar returns 403/404, without blocking the others
 - Horizontal scroll on narrow screens
 
-## Pending Tasks
+### Task 8: Index Redirect + Date Navigation ✅
+- **Index redirect** (`pages/index.vue`): automatic redirect to `/dashboard` if calendars are configured (`hasCalendars`), otherwise to `/settings`
+- **Date navigation controls** (in `pages/dashboard.vue`):
+  - Date picker (input `type="date"`) + prev/next day arrows in the header
+  - "Oggi" reset button and "Oggi" badge next to the current date
+  - Selected date state (`selectedDate`), refetches via `fetchEventsForDate` on change (replacing `fetchTodayEvents`)
+  - Range validation: no past dates, no future dates beyond 1 year (arrows and input clamped/bounded)
+- Typecheck enabled: added `typescript` + `vue-tsc` dev deps and a `typecheck` npm script; fixed pre-existing type errors in `useCalendarEvents.ts` and `useGoogleAuth.ts`
 
-### Task 8: Date Navigation Controls
-- Implement date picker or arrow navigation
-- Update selected date in useCalendarEvents
-- Show current date indicator
-- Validate date range (no past dates or future dates beyond 1 year)
+## Pending Tasks
 
 ### Task 9: Environment Setup
 - Create .env.example file
@@ -115,7 +118,7 @@ multi-event-day-multi-calendar/
 ├── layouts/
 │   └── default.vue
 ├── pages/
-│   ├── index.vue (pending)
+│   ├── index.vue (redirect)
 │   ├── settings/
 │   │   └── index.vue
 │   └── dashboard.vue
@@ -144,8 +147,7 @@ multi-event-day-multi-calendar/
 - Requires Google Cloud Console setup for API credentials
 
 ## Next Steps
-1. Add date navigation controls (Task 8)
-2. Set up environment files (Task 9)
-3. Add comprehensive testing (Task 10)
-4. Update documentation (Task 11)
-5. Deploy to production (Task 12)
+1. Set up environment files (Task 9)
+2. Add comprehensive testing (Task 10)
+3. Update documentation (Task 11)
+4. Deploy to production (Task 12)
