@@ -38,13 +38,19 @@ Al montaggio dell'app, se `localStorage` non contiene calendari configurati → 
 
 ### Funzionalità
 
-1. **Connetti calendari** — input testuale per inserire l'ID di un calendario Google (es. `c_abc123@resource.calendar.google.com`) + bottone "Aggiungi".
-2. **Lista calendari aggiunti** — per ciascuno:
+1. **Gestione categorie** — sezione dedicata per creare/modificare/eliminare le categorie (tag):
+   - Input testo + bottone "Aggiungi" per creare una nuova categoria
+   - Ogni categoria mostra il numero di calendari assegnati
+   - Bottone modifica (rename inline) ed elimina (con conferma)
+   - Eliminando una categoria, i calendari collegati tornano "Senza categoria"
+2. **Connetti calendari** — input testuale per inserire l'ID di un calendario Google (es. `c_abc123@resource.calendar.google.com`) + bottone "Aggiungi". Campo `<select>` opzionale per assegnare una categoria al nuovo calendario.
+3. **Lista calendari aggiunti** — per ciascuno:
    - ID calendario (non modificabile, testo piccolo/grigio)
    - Campo testo per il **nome personalizzato** (intestazione colonna)
+   - `<select>` per assegnare/cambiare la **categoria** (opzione "Nessuna categoria" = nessuna)
    - Bottone "Rimuovi"
-3. **Salva** — persiste la configurazione in `localStorage`
-4. **Vai alla Dashboard** — link/bottone (disabilitato se nessun calendario configurato)
+4. **Salva** — persiste la configurazione in `localStorage`
+5. **Vai alla Dashboard** — link/bottone (disabilitato se nessun calendario configurato)
 
 ### Struttura dati in localStorage
 
@@ -52,11 +58,18 @@ Al montaggio dell'app, se `localStorage` non contiene calendari configurati → 
 // chiave: "calendar_config"
 interface CalendarConfig {
   calendars: CalendarEntry[];
+  categories: Category[];
 }
 
 interface CalendarEntry {
   id: string;          // ID calendario Google
   displayName: string; // Nome personalizzato (intestazione colonna)
+  category?: string;   // ID della categoria assegnata (opzionale → "Senza categoria")
+}
+
+interface Category {
+  id: string;          // UUID univoco della categoria
+  name: string;        // Nome visualizzato della categoria
 }
 ```
 
@@ -66,20 +79,28 @@ interface CalendarEntry {
 
 ### Layout tabella
 
+Le colonne dei calendari sono raggruppate per categoria. La testata ha **due righe**:
+- riga superiore: nome della **categoria** con `colspan` pari al numero di calendari del gruppo
+- riga inferiore: nomi dei **calendari** (una colonna ciascuno)
+
+I calendari senza categoria assegnata vengono raggruppati in "Senza categoria" (in fondo).
+
 ```
-| Ora   | [Nome Cal 1] | [Nome Cal 2] | [Nome Cal 3] |
-|-------|--------------|--------------|--------------|
-| 08:00 | Yoga         |      —       |      —       |
-| 09:00 | Yoga         |      —       | Ginnastica   |
-| 10:00 |      —       |      —       | Ginnastica   |
-| ...   | ...          | ...          | ...          |
-| 19:00 |      —       |      —       |      —       |
+|          |─── Categoria A ───────|── Categoria B ──|── Senza categoria ─|
+|   Ora    | Cal 1   | Cal 2       | Cal 3           | Cal 4             |
+|----------|---------|-------------|-----------------|-------------------|
+| 08:00    |  —      |  —          |  —              |  —                |
+| 09:00    |  —      |  —          |  —              |  —                |
+| 10:00    |  —      |  —          |  —              |  —                |
+| ...      |  ...    |  ...        |  ...            |  ...              |
+| 19:00    |  —      |  —          |  —              |  —                |
 ```
 
 ### Specifiche tabella
 
 - **Righe orarie**: dalle `08:00` alle `20:00`, slot da **60 minuti** (13 righe totali: 08, 09, …, 20).
-- **Colonne**: una per ogni calendario configurato.
+- **Colonne**: una per ogni calendario configurato, ordinate per categoria.
+- **Testata a due righe**: riga categorie (riga superiore) + riga calendari (riga inferiore). La cella "Ora" ha `rowspan="2"` per coprire entrambe le righe.
 - **Celle evento**: se uno slot orario rientra nell'intervallo `[start, end)` di un evento, mostra il nome dell'evento. Celle consecutive dello stesso evento possono avere un colore/stile unificato (rowspan opzionale, ma non obbligatorio — anche ripetere il titolo va bene).
 - **Celle vuote**: mostrare `—` o lasciare vuote.
 - **Data mostrata**: sempre **oggi** (nessun selettore data in v1).
@@ -174,8 +195,12 @@ function getEventForSlot(events: GoogleCalendarEvent[], slotHour: number): strin
 ### `useCalendarConfig`
 
 ```typescript
-// Legge/scrive la configurazione da localStorage
-const { calendars, addCalendar, removeCalendar, updateDisplayName, saveConfig } = useCalendarConfig();
+// Legge/scrive la configurazione da localStorage (calendari + categorie)
+const {
+  calendars, categories, groupedCalendars,
+  addCalendar, removeCalendar, updateDisplayName, saveConfig,
+  addCategory, updateCategory, removeCategory, setCalendarCategory
+} = useCalendarConfig();
 ```
 
 ### `useGoogleAuth`
@@ -211,11 +236,11 @@ const { events, loading, error, fetchAll } = useCalendarEvents(calendars, access
 │   ├── useGoogleAuth.ts
 │   └── useCalendarEvents.ts
 ├── components/
-│   ├── CalendarTable.vue  # tabella oraria
+│   ├── CalendarTable.vue  # tabella oraria (header a due righe: categorie + calendari)
 │   ├── CalendarCell.vue   # singola cella
 │   └── EventChip.vue      # chip nome evento
 ├── types/
-│   └── calendar.ts        # interfacce TypeScript
+│   └── calendar.ts        # interfacce TypeScript (CalendarEntry, Category, CalendarConfig)
 └── public/
 ```
 

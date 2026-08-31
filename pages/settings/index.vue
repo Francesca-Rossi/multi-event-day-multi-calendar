@@ -47,6 +47,114 @@
       </div>
     </UCard>
 
+    <!-- Categories Section -->
+    <UCard class="mb-6">
+      <template #header>
+        <h3 class="text-lg font-semibold text-gray-900">Categories</h3>
+      </template>
+
+      <form @submit.prevent="handleAddCategory" class="space-y-4">
+        <div>
+          <label for="categoryName" class="block text-sm font-medium text-gray-700 mb-1">
+            Category Name
+          </label>
+          <UInput
+            id="categoryName"
+            v-model="newCategoryName"
+            placeholder="e.g. Sale"
+            autofocus
+          />
+          <p v-if="categoryErrors.name" class="mt-1 text-sm text-red-600">
+            {{ categoryErrors.name }}
+          </p>
+        </div>
+
+        <button
+          type="submit"
+          :disabled="!newCategoryName.trim()"
+          class="w-full px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Add Category
+        </button>
+      </form>
+
+      <div v-if="categories.length === 0" class="mt-4 text-center py-4 border-t border-gray-200">
+        <p class="text-sm text-gray-600">No categories yet</p>
+      </div>
+
+      <div v-else class="mt-4 space-y-2 border-t border-gray-200 pt-4">
+        <div
+          v-for="category in categories"
+          :key="category.id"
+          class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+        >
+          <div class="flex-1 min-w-0">
+            <template v-if="editingCategoryId === category.id">
+              <UInput
+                v-model="editingCategoryName"
+                placeholder="Nome categoria"
+                autofocus
+                @keyup.enter="handleSaveCategory(category.id)"
+                @keyup.esc="handleCancelCategoryEdit"
+              />
+            </template>
+            <template v-else>
+              <p class="text-sm font-medium text-gray-900 truncate">
+                {{ category.name }}
+              </p>
+              <p class="text-xs text-gray-500">
+                {{ calendarCountByCategory(category.id) }} calendario/i
+              </p>
+            </template>
+          </div>
+
+          <div class="flex items-center space-x-2 ml-4">
+            <template v-if="editingCategoryId === category.id">
+              <UButton
+                size="sm"
+                variant="ghost"
+                color="green"
+                @click="handleSaveCategory(category.id)"
+                title="Salva"
+              >
+                <Icon name="heroicons:check" class="w-4 h-4" />
+              </UButton>
+              <UButton
+                size="sm"
+                variant="ghost"
+                color="gray"
+                @click="handleCancelCategoryEdit"
+                title="Annulla"
+              >
+                <Icon name="heroicons:x-mark" class="w-4 h-4" />
+              </UButton>
+            </template>
+
+            <template v-else>
+              <UButton
+                size="sm"
+                variant="ghost"
+                color="gray"
+                @click="handleUpdateCategory(category)"
+                title="Rename"
+              >
+                <Icon name="heroicons:pencil" class="w-4 h-4" />
+              </UButton>
+              <UButton
+                size="sm"
+                variant="ghost"
+                color="red"
+                @click="handleRemoveCategory(category.id)"
+                title="Remove"
+              >
+                <Icon name="heroicons:trash" class="w-4 h-4" />
+              </UButton>
+            </template>
+          </div>
+        </div>
+      </div>
+    </UCard>
+
     <!-- Add Calendar Section -->
     <UCard class="mb-6">
       <template #header>
@@ -82,6 +190,22 @@
             v-model="newCalendarDisplayName"
             placeholder="My Work Calendar"
           />
+        </div>
+
+        <div>
+          <label for="newCalendarCategory" class="block text-sm font-medium text-gray-700 mb-1">
+            Category (Optional)
+          </label>
+          <select
+            id="newCalendarCategory"
+            v-model="newCalendarCategoryId"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Nessuna categoria</option>
+            <option v-for="category in categories" :key="category.id" :value="category.id">
+              {{ category.name }}
+            </option>
+          </select>
         </div>
 
         <button
@@ -127,6 +251,22 @@
                 {{ calendar.displayName || calendar.id }}
               </p>
               <p class="text-xs text-gray-500 truncate">{{ calendar.id }}</p>
+              <div class="mt-2">
+                <label :for="`category-${calendar.id}`" class="block text-xs font-medium text-gray-500 mb-1">
+                  Categoria
+                </label>
+                <select
+                  :id="`category-${calendar.id}`"
+                  :value="calendar.category || ''"
+                  @change="handleCalendarCategoryChange(calendar.id, $event)"
+                  class="px-2 py-1 border border-gray-300 rounded-md bg-white text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Nessuna categoria</option>
+                  <option v-for="category in categories" :key="category.id" :value="category.id">
+                    {{ category.name }}
+                  </option>
+                </select>
+              </div>
             </template>
           </div>
           
@@ -208,16 +348,23 @@ const route = useRoute()
 const router = useRouter()
 
 // Use composables
-const { calendars, addCalendar, removeCalendar, updateDisplayName, moveCalendarUp, moveCalendarDown } = useCalendarConfig()
+const { calendars, categories, addCalendar, removeCalendar, updateDisplayName, moveCalendarUp, moveCalendarDown, addCategory, updateCategory, removeCategory, setCalendarCategory } = useCalendarConfig()
 const { signIn, signOut, authState, user, errorMessage: authErrorMessage, isAuthenticated } = useGoogleAuth()
 
-// State
+// State calendari
 const newCalendarId = ref('')
 const newCalendarDisplayName = ref('')
+const newCalendarCategoryId = ref('')
 const addingCalendar = ref(false)
 const editingCalendarId = ref(null)
 const editingName = ref('')
 const errors = ref({})
+
+// State categorie
+const newCategoryName = ref('')
+const editingCategoryId = ref(null)
+const editingCategoryName = ref('')
+const categoryErrors = ref({})
 
 // Computed
 const isValidCalendarId = computed(() => {
@@ -279,14 +426,21 @@ const handleAddCalendar = async () => {
   try {
     const id = newCalendarId.value.trim()
     const displayName = newCalendarDisplayName.value.trim() || undefined
+    const categoryId = newCalendarCategoryId.value || undefined
     
     addCalendar(id, displayName)
     
-    console.log('Calendar added successfully:', { id, displayName })
+    // Assegna la categoria se selezionata
+    if (categoryId) {
+      setCalendarCategory(id, categoryId)
+    }
+    
+    console.log('Calendar added successfully:', { id, displayName, category: categoryId })
     
     // Reset form
     newCalendarId.value = ''
     newCalendarDisplayName.value = ''
+    newCalendarCategoryId.value = ''
   } catch (error) {
     console.error('Error adding calendar:', error)
     errors.value.general = 'Failed to add calendar. Please try again.'
@@ -323,6 +477,71 @@ const handleRemoveCalendar = (calendarId) => {
     removeCalendar(calendarId)
     console.log('Calendar removed:', calendarId)
   }
+}
+
+// ---------------------------------------------------------------------------
+// Gestione categorie
+// ---------------------------------------------------------------------------
+
+const handleAddCategory = () => {
+  categoryErrors.value = {}
+
+  const name = newCategoryName.value.trim()
+  if (!name) {
+    categoryErrors.value.name = 'Category name is required'
+    return
+  }
+
+  const created = addCategory(name)
+  if (!created) {
+    categoryErrors.value.name = 'A category with this name already exists'
+    return
+  }
+
+  console.log('Category added successfully:', created)
+  newCategoryName.value = ''
+}
+
+const handleUpdateCategory = (category) => {
+  editingCategoryId.value = category.id
+  editingCategoryName.value = category.name
+}
+
+const handleSaveCategory = (categoryId) => {
+  if (!editingCategoryName.value.trim()) {
+    editingCategoryId.value = null
+    editingCategoryName.value = ''
+    return
+  }
+
+  updateCategory(categoryId, editingCategoryName.value.trim())
+  console.log('Category updated:', { categoryId, name: editingCategoryName.value.trim() })
+
+  editingCategoryId.value = null
+  editingCategoryName.value = ''
+}
+
+const handleCancelCategoryEdit = () => {
+  editingCategoryId.value = null
+  editingCategoryName.value = ''
+}
+
+const handleRemoveCategory = (categoryId) => {
+  const category = categories.value.find((cat) => cat.id === categoryId)
+  if (confirm(`Are you sure you want to remove the category "${category ? category.name : ''}"? Calendars in this category will become uncategorized.`)) {
+    removeCategory(categoryId)
+    console.log('Category removed:', categoryId)
+  }
+}
+
+const handleCalendarCategoryChange = (calendarId, event) => {
+  const categoryId = event.target.value || undefined
+  setCalendarCategory(calendarId, categoryId)
+  console.log('Calendar category updated:', { calendarId, category: categoryId || null })
+}
+
+const calendarCountByCategory = (categoryId) => {
+  return calendars.value.filter((cal) => cal.category === categoryId).length
 }
 
 // Watch for editing changes

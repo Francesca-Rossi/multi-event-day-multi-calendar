@@ -2,7 +2,7 @@
 import CalendarTable from '~/components/CalendarTable.vue'
 
 // Usa i composables per accedere a calendari, autenticazione e eventi
-const { calendars } = useCalendarConfig()
+const { calendars, categories } = useCalendarConfig()
 const { accessToken, isAuthenticated, signIn } = useGoogleAuth()
 const { eventsByCalendar, errors, isLoading, hasError, errorMessage, fetchEventsForDate, formatDate } = useCalendarEvents()
 
@@ -235,6 +235,7 @@ const handleSignIn = async () => {
         :errors="errors"
         :is-loading="isLoading"
         :error-message="hasError ? errorMessage : undefined"
+        :categories="categories"
       />
     </main>
   </div>

@@ -606,6 +606,82 @@ const maxDate = new Date(todayStart); maxDate.setFullYear(maxDate.getFullYear() 
 
 ---
 
+## Task 10 Completata: Categorie (Tag) per Calendari
+
+Questa task ha aggiunto il supporto alle **categorie (tag)** per raggruppare i calendari. In fase di definizione/rinominazione del calendario è ora possibile assegnarlo a una categoria specifica, definita autonomamente dall'utente nelle impostazioni. La categoria appare nella dashboard in una riga superiore alla testata della tabella.
+
+### File modificati:
+
+1. **`types/calendar.ts`** - Modello dati esteso
+2. **`composables/useCalendarConfig.ts`** - Gestione categorie CRUD
+3. **`pages/settings/index.vue`** - Sezione "Categories" + select categoria nei calendari
+4. **`components/CalendarTable.vue`** - Testata a due righe (categorie + calendari)
+5. **`pages/dashboard.vue`** - Passaggio delle categorie alla tabella
+
+**Responsabilità:**
+- Gli utenti possono definire categorie autonomamente nei settings
+- Ogni calendario può essere assegnato a una categoria
+- Nella dashboard appare una **riga superiore** con il nome della categoria (con `colspan` sul numero di calendari del gruppo)
+- I calendari senza categoria vengono raggruppati in "Senza categoria" in fondo alla tabella
+
+**Spiegazione del codice:**
+
+*Modello dati (types/calendar.ts):*
+```typescript
+interface Category {
+  id: string   // UUID univoco
+  name: string // Nome visualizzato
+}
+
+interface CalendarEntry {
+  id: string
+  displayName: string
+  category?: string // ID della categoria assegnata (opzionale)
+}
+
+interface CalendarConfig {
+  calendars: CalendarEntry[]
+  categories: Category[] // Nuovo campo persistito in localStorage
+}
+```
+- La nuova interfaccia `Category` rappresenta una categoria con un id univoco (UUID) e un nome
+- `CalendarEntry.category` memorizza l'ID della categoria assegnata (opzionale: se assente, il calendario sta in "Senza categoria")
+- `CalendarConfig` ora contiene anche l'array `categories`, persistito in `localStorage`
+
+*Composable useCalendarConfig.ts:*
+```javascript
+const {
+  categories, groupedCalendars,
+  addCategory, updateCategory, removeCategory, setCalendarCategory
+} = useCalendarConfig()
+```
+- **`categories`** (ref) - Array reattivo delle categorie configurate
+- **`addCategory(name)`** - Crea una nuova categoria (genera un UUID via `crypto.randomUUID`, controlla i duplicati case-insensitive)
+- **`updateCategory(id, name)`** - Rinomina una categoria
+- **`removeCategory(id)`** - Elimina una categoria e libera i calendari collegati (tornano "Senza categoria")
+- **`setCalendarCategory(calendarId, categoryId?)`** - Assegna/rimuove la categoria di un calendario
+- **`groupedCalendars`** (computed) - Raggruppa i calendari per categoria nell'ordine corretto, con il gruppo "Senza categoria" in fondo. Usato dalla tabella per ordinare le colonne
+
+*Pagina Settings (pages/settings/index.vue):*
+- Nuova sezione **"Categories"**: input + bottone "Add Category" per creare una categoria, lista con conteggio calendari, bottone rename (inline) ed elimina (con conferma)
+- Nel form **"Add Calendar"**: nuovo `<select>` opzionale per assegnare una categoria al nuovo calendario
+- Nella lista **"Configured Calendars"**: ogni calendario ha un `<select>` per assegnare/cambiare la categoria (opzione "Nessuna categoria")
+
+*Componente CalendarTable.vue:*
+```
+|          |─── Categoria A ───────|── Categoria B ──|── Senza categoria ─|
+|   Ora    | Cal 1   | Cal 2       | Cal 3           | Cal 4             |
+|----------|---------|-------------|-----------------|-------------------|
+```
+- La testata ha ora **due righe**:
+  - **Riga superiore**: nome della categoria con `colspan` uguale al numero di calendari del gruppo
+  - **Riga inferiore**: nomi dei calendari (una colonna ciascuno)
+- La cella "Ora" ha `rowspan="2"` per coprire entrambe le righe
+- Nuova prop `categories` passata dalla dashboard
+- Computed `groupedCalendars` nel componente: genera i gruppi di calendari per categoria, usati sia per la riga superiore (span) sia per ordinare le colonne (riga inferiore e corpo della tabella)
+
+---
+
 ## Prerequisiti da completare:
 
 1. **Configurare Google Cloud Console**:
@@ -625,10 +701,10 @@ const maxDate = new Date(todayStart); maxDate.setFullYear(maxDate.getFullYear() 
 
 ## Prossime Task:
 
-- **Task 10**: Configurare file environment (.env.example)
-- **Task 11**: Scrivere test unitari e di integrazione
-- **Task 12**: Aggiornare documentazione
-- **Task 13**: Deploy in produzione
+- **Task 11**: Configurare file environment (.env.example)
+- **Task 12**: Scrivere test unitari e di integrazione
+- **Task 13**: Aggiornare documentazione
+- **Task 14**: Deploy in produzione
 
 ## Spiegazione del codice per principianti:
 

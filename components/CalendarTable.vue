@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CalendarEntry } from '~/types/calendar'
+import type { CalendarEntry, Category } from '~/types/calendar'
 import type { GoogleCalendarEvent } from '~/types/calendar'
 import CalendarCell from './CalendarCell.vue'
 
@@ -9,11 +9,13 @@ interface Props {
   errors?: Map<string, string>
   isLoading: boolean
   errorMessage?: string
+  categories?: Category[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   errors: () => new Map<string, string>(),
   errorMessage: undefined,
+  categories: () => [],
 })
 
 /**
@@ -39,6 +41,46 @@ const hours = computed(() => {
   }
   return result
 })
+
+/**
+ * Interfaccia interna per un gruppo di calendari nella testata
+ */
+interface CategoryGroup {
+  category: Category | null
+  calendars: CalendarEntry[]
+}
+
+/**
+ * Raggruppa i calendari per categoria nell'ordine delle categorie definite.
+ * I calendari senza categoria formano un gruppo "Senza categoria" in fondo.
+ * Utilizzato sia per la riga superiore (span della categoria) sia per la
+ * riga dei nomi dei calendari.
+ */
+const groupedCalendars = computed<CategoryGroup[]>(() => {
+  const groups: CategoryGroup[] = []
+
+  // Gruppi per le categorie definite (in ordine di inserimento)
+  for (const category of props.categories) {
+    const calList = props.calendars.filter((cal) => cal.category === category.id)
+    if (calList.length > 0) {
+      groups.push({ category, calendars: calList })
+    }
+  }
+
+  // Gruppo "Senza categoria" (in fondo)
+  const unassigned = props.calendars.filter((cal) => !cal.category)
+  if (unassigned.length > 0) {
+    groups.push({ category: null, calendars: unassigned })
+  }
+
+  // Fallback: se non ci sono raggruppamenti ma ci sono calendari
+  // (es. categorie non più esistenti), mettili in "Senza categoria"
+  if (groups.length === 0 && props.calendars.length > 0) {
+    groups.push({ category: null, calendars: [...props.calendars] })
+  }
+
+  return groups
+})
 </script>
 
 <template>
@@ -61,14 +103,32 @@ const hours = computed(() => {
     
     <!-- Tabella Oraria -->
     <table v-else class="min-w-full bg-white border-collapse shadow-sm">
-      <!-- Header con nomi calendari -->
+      <!-- Header: due righe - categorie (riga superiore) e nomi calendari (riga inferiore) -->
       <thead>
-        <tr class="bg-gray-100 sticky top-0 z-10">
-          <th class="sticky left-0 z-20 bg-gray-100 px-4 py-3 text-left font-semibold border-r border-gray-300">
+        <!-- Riga superiore: nome delle categorie (colspan sui calendari del gruppo) -->
+        <tr class="bg-gray-200 sticky top-0 z-10">
+          <th
+            :rowspan="2"
+            class="sticky left-0 z-20 bg-gray-200 px-4 py-3 text-left font-semibold border-r border-gray-300"
+          >
             Ora
           </th>
           <th
-            v-for="c in calendars"
+            v-for="group in groupedCalendars"
+            :key="group.category ? group.category.id : `uncategorized-${group.calendars[0]?.id ?? 'none'}`"
+            :colspan="group.calendars.length"
+            class="px-4 py-2 text-center font-semibold border-r border-gray-300 last:border-r-0"
+          >
+            <span class="text-xs uppercase tracking-wide">
+              {{ group.category ? group.category.name : 'Senza categoria' }}
+            </span>
+          </th>
+        </tr>
+
+        <!-- Riga inferiore: nomi dei calendari -->
+        <tr class="bg-gray-100 sticky top-0 z-10">
+          <th
+            v-for="c in groupedCalendars.flatMap((g) => g.calendars)"
             :key="c.id"
             class="px-4 py-3 text-left font-semibold min-w-[200px] border-r border-gray-300 last:border-r-0"
           >
@@ -98,9 +158,9 @@ const hours = computed(() => {
             {{ String(h).padStart(2, '0') }}:00
           </td>
           
-          <!-- Celle evento per ogni calendario -->
+          <!-- Celle evento per ogni calendario (stesso ordine della testata) -->
           <CalendarCell
-            v-for="c in calendars"
+            v-for="c in groupedCalendars.flatMap((g) => g.calendars)"
             :key="`${c.id}-${h}`"
             :hour="h"
             :events="eventsByCalendar.get(c.id) || []"

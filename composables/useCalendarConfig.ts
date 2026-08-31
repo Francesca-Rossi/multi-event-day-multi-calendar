@@ -1,7 +1,7 @@
 // Composable per gestire la configurazione dei calendari
 // Responsabilità: leggere e scrivere i calendari configurati in localStorage
 
-import type { CalendarConfig, CalendarEntry } from '~/types/calendar'
+import type { CalendarConfig, CalendarEntry, Category } from '~/types/calendar'
 
 // Chiave usata per salvare i dati in localStorage
 const STORAGE_KEY = 'calendar_config'
@@ -29,6 +29,10 @@ export const useCalendarConfig = () => {
   // Inizializzato a un array vuoto, verrà popolato da localStorage
   const calendars = ref<CalendarEntry[]>([])
 
+  // Ref per memorizzare l'elenco delle categorie
+  // Inizializzato a un array vuoto, verrà popolato da localStorage
+  const categories = ref<Category[]>([])
+
   /**
    * Legge la configurazione da localStorage
    * Gestisce i casi in cui localStorage è vuoto o i dati sono corrotti
@@ -50,12 +54,21 @@ export const useCalendarConfig = () => {
           // Se la struttura è corrotta, resetta a array vuoto
           calendars.value = []
         }
+
+        // Validazione: assicuriamoci che categories esista e sia un array
+        if (Array.isArray(config.categories)) {
+          categories.value = config.categories
+        } else {
+          // Se la struttura è corrotta, resetta a array vuoto
+          categories.value = []
+        }
       }
     } catch (error) {
       // Se c'è un errore (JSON corrotto, localStorage non disponibile, ecc.)
       // Impostiamo un array vuoto e mostriamo un errore in console
       console.error('Errore nel caricamento della configurazione:', error)
       calendars.value = []
+      categories.value = []
     }
   }
 
@@ -66,7 +79,8 @@ export const useCalendarConfig = () => {
   const saveConfig = () => {
     try {
       const config: CalendarConfig = {
-        calendars: calendars.value
+        calendars: calendars.value,
+        categories: categories.value
       }
       
       // Stringifica e salva in localStorage
@@ -235,6 +249,140 @@ export const useCalendarConfig = () => {
     return calendars.value.length > 0
   })
 
+  /**
+   * Genera un identificativo univoco per una nuova categoria
+   * Usa l'API crypto per generare un UUID, con fallback per browser
+   * che non supportano crypto.randomUUID
+   */
+  const generateCategoryId = (): string => {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+      return crypto.randomUUID()
+    }
+    return `cat_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
+  }
+
+  /**
+   * Aggiunge una nuova categoria alla lista
+   * 
+   * @param name - Il nome visualizzato della categoria
+   * @returns La categoria creata, oppure null se il nome è vuoto o duplicato
+   */
+  const addCategory = (name: string): Category | null => {
+    const normalizedName = name.trim()
+
+    if (!normalizedName) {
+      console.warn('Impossibile aggiungere categoria: nome vuoto')
+      return null
+    }
+
+    // Controlla se esiste già una categoria con lo stesso nome (case-insensitive)
+    const exists = categories.value.some(
+      (cat) => cat.name.toLowerCase() === normalizedName.toLowerCase()
+    )
+    if (exists) {
+      console.warn(`Categoria "${normalizedName}" esiste già`)
+      return null
+    }
+
+    const newCategory: Category = {
+      id: generateCategoryId(),
+      name: normalizedName,
+    }
+
+    categories.value.push(newCategory)
+    saveConfig()
+    return newCategory
+  }
+
+  /**
+   * Aggiorna il nome di una categoria esistente
+   * 
+   * @param id - L'ID della categoria da aggiornare
+   * @param name - Il nuovo nome
+   */
+  const updateCategory = (id: string, name: string): void => {
+    const normalizedName = name.trim()
+    if (!normalizedName) {
+      console.warn('Impossibile aggiornare categoria: nome vuoto')
+      return
+    }
+
+    const category = categories.value.find((cat) => cat.id === id)
+    if (!category) {
+      console.warn(`Categoria con ID ${id} non trovata`)
+      return
+    }
+
+    category.name = normalizedName
+    saveConfig()
+  }
+
+  /**
+   * Rimuove una categoria dalla lista
+   * I calendari che avevano questa categoria assegnata tornano "Senza categoria"
+   * 
+   * @param id - L'ID della categoria da rimuovere
+   */
+  const removeCategory = (id: string): void => {
+    // Rimuovi la categoria dall'elenco
+    categories.value = categories.value.filter((cat) => cat.id !== id)
+
+    // Libera i calendari collegati (tornano "Senza categoria")
+    calendars.value.forEach((calendar) => {
+      if (calendar.category === id) {
+        calendar.category = undefined
+      }
+    })
+
+    saveConfig()
+  }
+
+  /**
+   * Assegna o rimuove la categoria di un calendario
+   * 
+   * @param calendarId - L'ID del calendario
+   * @param categoryId - L'ID della categoria da assegnare, oppure undefined per "Senza categoria"
+   */
+  const setCalendarCategory = (calendarId: string, categoryId: string | undefined): void => {
+    const calendar = calendars.value.find((cal) => cal.id === calendarId)
+    if (!calendar) {
+      console.warn(`Calendario con ID ${calendarId} non trovato`)
+      return
+    }
+
+    calendar.category = categoryId || undefined
+    saveConfig()
+  }
+
+  /**
+   * Computed che raggruppa i calendari per categoria nell'ordine corretto
+   * Restituisce un array di gruppi, ciascuno con:
+   * - category: la categoria (o null per "Senza categoria")
+   * - calendars: i calendari appartenenti al gruppo
+   * Il gruppo "Senza categoria" viene messo in fondo alla lista
+   */
+  const groupedCalendars = computed(() => {
+    const groups: Array<{ category: Category | null; calendars: CalendarEntry[] }> = []
+
+    // Gruppi per le categorie definite (in ordine di inserimento)
+    for (const category of categories.value) {
+      const calList = calendars.value.filter(
+        (cal) => cal.category === category.id
+      )
+      if (calList.length > 0) {
+        groups.push({ category, calendars: calList })
+      }
+    }
+
+    // Gruppo "Senza categoria" (in fondo)
+    const unassigned = calendars.value.filter((cal) => !cal.category)
+    if (unassigned.length > 0) {
+      groups.push({ category: null, calendars: unassigned })
+    }
+
+    return groups
+  })
+
   // Carica la configurazione all'inizializzazione del composable
   // In Nuxt 3, onNuxtReady viene eseguito dopo il mount dell'app
   if (import.meta.client) {
@@ -244,12 +392,18 @@ export const useCalendarConfig = () => {
   // Espone tutte le funzioni e le computed necessarie
   return {
     calendars,
+    categories,
+    groupedCalendars,
     addCalendar,
     removeCalendar,
     updateDisplayName,
     moveCalendarUp,
     moveCalendarDown,
     saveConfig,
-    hasCalendars
+    hasCalendars,
+    addCategory,
+    updateCategory,
+    removeCategory,
+    setCalendarCategory
   }
 }
