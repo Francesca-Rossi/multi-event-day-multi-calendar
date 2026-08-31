@@ -176,6 +176,58 @@ export const useCalendarConfig = () => {
   }
 
   /**
+   * Sposta un calendario in alto nella lista (verso l'indice 0)
+   * 
+   * @param id - L'ID del calendario da spostare
+   * 
+   * Esempio:
+   * moveCalendarUp('c_abc123@resource.calendar.google.com')
+   */
+  const moveCalendarUp = (id: string) => {
+    const normalizedId = id.trim()
+    const index = calendars.value.findIndex(cal => cal.id === normalizedId)
+    
+    if (index <= 0) {
+      // Il calendario non esiste o è già in prima posizione
+      return
+    }
+    
+    // Scambia con l'elemento precedente
+    const temp = calendars.value[index - 1]!
+    calendars.value[index - 1] = calendars.value[index]!
+    calendars.value[index] = temp
+    
+    // Salva le modifiche
+    saveConfig()
+  }
+
+  /**
+   * Sposta un calendario in basso nella lista
+   * 
+   * @param id - L'ID del calendario da spostare
+   * 
+   * Esempio:
+   * moveCalendarDown('c_abc123@resource.calendar.google.com')
+   */
+  const moveCalendarDown = (id: string) => {
+    const normalizedId = id.trim()
+    const index = calendars.value.findIndex(cal => cal.id === normalizedId)
+    
+    if (index < 0 || index >= calendars.value.length - 1) {
+      // Il calendario non esiste o è già in ultima posizione
+      return
+    }
+    
+    // Scambia con l'elemento successivo
+    const temp = calendars.value[index + 1]!
+    calendars.value[index + 1] = calendars.value[index]!
+    calendars.value[index] = temp
+    
+    // Salva le modifiche
+    saveConfig()
+  }
+
+  /**
    * Computed che restituisce true se ci sono calendari configurati
    * Utile per abilitare/disabilitare bottoni o mostrare contenuti condizionali
    */
@@ -195,6 +247,8 @@ export const useCalendarConfig = () => {
     addCalendar,
     removeCalendar,
     updateDisplayName,
+    moveCalendarUp,
+    moveCalendarDown,
     saveConfig,
     hasCalendars
   }

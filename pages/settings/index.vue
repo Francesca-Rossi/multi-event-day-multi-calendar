@@ -113,32 +113,89 @@
           class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200"
         >
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-900 truncate">
-              {{ calendar.displayName || calendar.id }}
-            </p>
-            <p class="text-xs text-gray-500 truncate">{{ calendar.id }}</p>
+            <template v-if="editingCalendarId === calendar.id">
+              <UInput
+                v-model="editingName"
+                placeholder="Nome visualizzato"
+                autofocus
+                @keyup.enter="handleSaveDisplayName(calendar.id)"
+                @keyup.esc="handleCancelEdit"
+              />
+            </template>
+            <template v-else>
+              <p class="text-sm font-medium text-gray-900 truncate">
+                {{ calendar.displayName || calendar.id }}
+              </p>
+              <p class="text-xs text-gray-500 truncate">{{ calendar.id }}</p>
+            </template>
           </div>
           
           <div class="flex items-center space-x-2 ml-4">
-            <UButton
-              size="sm"
-              variant="ghost"
-              color="gray"
-              @click="handleUpdateDisplayName(calendar)"
-              title="Rename"
-            >
-              <Icon name="heroicons:pencil" class="w-4 h-4" />
-            </UButton>
+            <template v-if="editingCalendarId === calendar.id">
+              <UButton
+                size="sm"
+                variant="ghost"
+                color="green"
+                @click="handleSaveDisplayName(calendar.id)"
+                title="Salva"
+              >
+                <Icon name="heroicons:check" class="w-4 h-4" />
+              </UButton>
+              
+              <UButton
+                size="sm"
+                variant="ghost"
+                color="gray"
+                @click="handleCancelEdit"
+                title="Annulla"
+              >
+                <Icon name="heroicons:x-mark" class="w-4 h-4" />
+              </UButton>
+            </template>
             
-            <UButton
-              size="sm"
-              variant="ghost"
-              color="red"
-              @click="handleRemoveCalendar(calendar.id)"
-              title="Remove"
-            >
-              <Icon name="heroicons:trash" class="w-4 h-4" />
-            </UButton>
+            <template v-else>
+              <UButton
+                size="sm"
+                variant="ghost"
+                color="gray"
+                @click="moveCalendarUp(calendar.id)"
+                :disabled="isFirst(calendar)"
+                title="Sposta su"
+              >
+                <Icon name="heroicons:chevron-up" class="w-4 h-4" />
+              </UButton>
+              
+              <UButton
+                size="sm"
+                variant="ghost"
+                color="gray"
+                @click="moveCalendarDown(calendar.id)"
+                :disabled="isLast(calendar)"
+                title="Sposta giù"
+              >
+                <Icon name="heroicons:chevron-down" class="w-4 h-4" />
+              </UButton>
+              
+              <UButton
+                size="sm"
+                variant="ghost"
+                color="gray"
+                @click="handleUpdateDisplayName(calendar)"
+                title="Rename"
+              >
+                <Icon name="heroicons:pencil" class="w-4 h-4" />
+              </UButton>
+              
+              <UButton
+                size="sm"
+                variant="ghost"
+                color="red"
+                @click="handleRemoveCalendar(calendar.id)"
+                title="Remove"
+              >
+                <Icon name="heroicons:trash" class="w-4 h-4" />
+              </UButton>
+            </template>
           </div>
         </div>
       </div>
@@ -151,7 +208,7 @@ const route = useRoute()
 const router = useRouter()
 
 // Use composables
-const { calendars, addCalendar, removeCalendar, updateDisplayName } = useCalendarConfig()
+const { calendars, addCalendar, removeCalendar, updateDisplayName, moveCalendarUp, moveCalendarDown } = useCalendarConfig()
 const { signIn, signOut, authState, user, errorMessage: authErrorMessage, isAuthenticated } = useGoogleAuth()
 
 // State
@@ -274,4 +331,13 @@ watch(editingCalendarId, (newId) => {
     editingName.value = ''
   }
 })
+
+// Computed per verificare se un calendario è il primo o l'ultimo
+const isFirst = (calendar) => {
+  return calendars.value.length > 0 && calendars.value[0].id === calendar.id
+}
+
+const isLast = (calendar) => {
+  return calendars.value.length > 0 && calendars.value[calendars.value.length - 1].id === calendar.id
+}
 </script>
