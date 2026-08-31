@@ -39,6 +39,24 @@ const toDateInputValue = (date: Date): string => {
 }
 
 /**
+ * Formatta una data nel formato italiano GG/MM/AAAA per la visualizzazione
+ */
+const formatDateDDMMYYYY = (date: Date): string => {
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${day}/${month}/${date.getFullYear()}`
+}
+
+const nativeDateInputRef = ref<HTMLInputElement | null>(null)
+
+/**
+ * Apre il picker nativo cliccando sull'input nascosto
+ */
+const openNativePicker = () => {
+  nativeDateInputRef.value?.showPicker?.()
+}
+
+/**
  * Computed bidirezionale per collegare l'input date alla data selezionata
  */
 const dateInputValue = computed({
@@ -151,13 +169,23 @@ const handleSignIn = async () => {
             ←
           </button>
 
-          <input
-            v-model="dateInputValue"
-            type="date"
-            class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm font-medium border-0"
-            :min="toDateInputValue(todayStart)"
-            :max="toDateInputValue(maxDate)"
-          />
+          <button
+            type="button"
+            class="relative overflow-hidden px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm font-medium border-0 cursor-pointer"
+            title="Seleziona una data"
+            @click="openNativePicker"
+          >
+            <input
+              id="date-input"
+              ref="nativeDateInputRef"
+              v-model="dateInputValue"
+              type="date"
+              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              :min="toDateInputValue(todayStart)"
+              :max="toDateInputValue(maxDate)"
+            />
+            <span>{{ formatDateDDMMYYYY(selectedDate) }}</span>
+          </button>
 
           <button
             class="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed"
