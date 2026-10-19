@@ -12,9 +12,9 @@ Documento di riferimento con tutte le attività concordate per mettere online l'
 | Parte A-bis — Pulsante Home dalle impostazioni | ✅ Fatto |
 | Parte A-ter — Persistenza sessione di login | ✅ Fatto |
 | Rimozione avatar utente dalle impostazioni | ✅ Fatto |
-| Parte B — Pulizia credenziali (Client Secret, `.env.example`) | ⬜ Da fare |
-| Parte C — Deploy su Netlify (`netlify.toml`, `package-lock.json`) | ⬜ Da fare |
-| Parte C — Configurazione Google Cloud Console + env var Netlify | ⬜ Da fare |
+| Parte B — Pulizia credenziali (Client Secret, `.env.example`) | ✅ Fatto |
+| Parte C — Passi consigliati (`netlify.toml`, `package-lock.json`) | ✅ Fatto |
+| Parte C — Passi obbligatori (Google Cloud Console + env var Netlify) | ⬜ Da fare (manuale) |
 
 ---
 
@@ -25,7 +25,7 @@ Documento di riferimento con tutte le attività concordate per mettere online l'
 **No.** L'autenticazione usa **Google Identity Services (GSI)** con `initTokenClient` (`composables/useGoogleAuth.ts`): è un **client pubblico** (flusso token implicito/PKCE), dove conta solo il `client_id`. Il Client Secret serve esclusivamente a un backend che esegue lo scambio *authorization code → token*; questa app è `ssr: false` e **non ha backend**, quindi il secret non viene mai letto né usato.
 
 Conseguenze:
-- Non va inserito da nessuna parte: va **eliminato** da `nuxt.config.ts` e da `.env` (⬜ ancora da fare).
+- Non va inserito da nessuna parte: va **eliminato** da `nuxt.config.ts` e da `.env` (✅ fatto).
 - Deve comunque restare segreto: non deve finire nel repository né nel bundle client-side.
 
 ### Chi può modificare le impostazioni?
@@ -93,20 +93,23 @@ Il default non blocca le personalizzazioni: ogni utente può modificarle, e verr
 
 ---
 
-## Parte B — Pulizia credenziali ⬜ DA FARE
+## Parte B — Pulizia credenziali ✅ FATTO
 
-1. ⬜ `nuxt.config.ts:25` → rimuovere `googleClientSecret: ''` dal `runtimeConfig`.
-2. ⬜ `.env` → rimuovere la riga `NUXT_GOOGLE_CLIENT_SECRET`.
-3. ⬜ Creare `.env.example` con solo:
+1. ✅ `nuxt.config.ts` → rimosso `googleClientSecret: ''` dal `runtimeConfig`.
+2. ✅ `.env` → rimossa la riga `NUXT_GOOGLE_CLIENT_SECRET`.
+3. ✅ Creato `.env.example` con solo:
    ```env
    NUXT_PUBLIC_GOOGLE_CLIENT_ID=123456789-abcdefgh.apps.googleusercontent.com
    ```
+   (con commento che ricorda di non inserire mai il Client Secret)
 
 ---
 
-## Parte C — Deploy su Netlify ⬜ DA FARE
+## Parte C — Deploy su Netlify
 
-1. ⬜ **`netlify.toml`** (nuovo file nella root):
+### Passi consigliati ✅ FATTO
+
+1. ✅ **`netlify.toml`** (nuovo file nella root):
    ```toml
    [build]
      command = "npm run generate"
@@ -119,9 +122,11 @@ Il default non blocca le personalizzazioni: ogni utente può modificarle, e verr
    ```
    Il redirect è il **fallback SPA**: senza di esso, l'accesso diretto a `/dashboard` o `/settings` restituirebbe 404 (l'app è `ssr: false`).
 
-2. ⬜ **`.gitignore:8`** → rimuovere `package-lock.json` dall'elenco degli ignorati e **committarlo**, per build riproducibili sul provider.
+2. ✅ **`.gitignore`** → rimossa la riga `package-lock.json`; il lockfile non è più ignorato e va **committato**, per build riproducibili sul provider.
 
-3. ⬜ **Google Cloud Console (passo manuale, non nel repo)**
+### Passi obbligatori ⬜ DA FARE (manuale)
+
+3. ⬜ **Google Cloud Console (non nel repo)**
    - Credenziali → Client OAuth2 → *Origini JavaScript autorizzate*: aggiungere `https://<dominio-produzione>` (oltre a `http://localhost:3000`).
    - Se il consent screen è in modalità **Test**: pubblicarlo oppure aggiungere gli eventuali utenti alla lista di test.
 
@@ -132,13 +137,13 @@ Il default non blocca le personalizzazioni: ogni utente può modificarle, e verr
 
 ## Verifica
 
-- ⬜ `npm run generate` completa senza errori.
+- ✅ `npm run generate` completa senza errori.
 - ⬜ Login Google funzionante in produzione.
 - ⬜ Refresh diretto su `https://<dominio>/settings` senza 404 (fallback SPA attivo).
 - ✅ Pulsante "Ripristina configurazione di base" applica correttamente il default.
 - ✅ Il pulsante "Home" in Settings naviga correttamente a `/dashboard`.
 - ✅ Dopo un reload la sessione resta attiva (persistenza in `sessionStorage`).
-- ⬜ Il Client Secret non è presente in `.env`, in `nuxt.config.ts` né nel repo.
+- ✅ Il Client Secret non è presente in `.env`, in `nuxt.config.ts` né nel repo.
 
 ---
 
@@ -150,8 +155,8 @@ Il default non blocca le personalizzazioni: ogni utente può modificarle, e verr
 | `composables/useCalendarConfig.ts` | Modifica — seed default + `applyDefaultConfig()` | ✅ Fatto |
 | `composables/useGoogleAuth.ts` | Modifica — persistenza sessione (`sessionStorage`) + fix `onMounted` | ✅ Fatto |
 | `pages/settings/index.vue` | Modifica — pulsante ripristino, pulsante "Home", rimozione avatar | ✅ Fatto |
-| `nuxt.config.ts` | Modifica — rimozione `googleClientSecret` | ⬜ Da fare |
-| `.env` | Modifica — rimozione `NUXT_GOOGLE_CLIENT_SECRET` | ⬜ Da fare |
-| `.env.example` | Nuovo — documentazione env | ⬜ Da fare |
-| `netlify.toml` | Nuovo — build + fallback SPA | ⬜ Da fare |
-| `.gitignore` | Modifica — non ignorare `package-lock.json` | ⬜ Da fare |
+| `nuxt.config.ts` | Modifica — rimozione `googleClientSecret` | ✅ Fatto |
+| `.env` | Modifica — rimozione `NUXT_GOOGLE_CLIENT_SECRET` | ✅ Fatto |
+| `.env.example` | Nuovo — documentazione env | ✅ Fatto |
+| `netlify.toml` | Nuovo — build + fallback SPA | ✅ Fatto |
+| `.gitignore` | Modifica — non ignorare `package-lock.json` | ✅ Fatto |
