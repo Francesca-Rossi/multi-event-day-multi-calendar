@@ -96,6 +96,17 @@ const GSI_SCRIPT_URL = 'https://accounts.google.com/gsi/client'
  */
 const GSI_SCRIPT_TIMEOUT = 10000 // 10 secondi
 
+/**
+ * Chiave usata per conservare la sessione in sessionStorage
+ * Permette di mantenere il login ai reload della pagina (finché il tab è aperto)
+ */
+const AUTH_STORAGE_KEY = 'google_auth'
+
+/**
+ * Flag per evitare di inizializzare più volte il client OAuth2
+ */
+let initialized = false
+
 // ============================================================================
 // STATO REATTIVO
 // ============================================================================
@@ -177,6 +188,55 @@ function setAuthState(newState: AuthState, error?: string): void {
   if (newState === 'error' && error) {
     errorMessage.value = error
     console.error(`[${COMPOSABLE_NAME}]`, error)
+  }
+}
+
+/**
+ * Salva la sessione corrente in sessionStorage
+ * Consente di sopravvivere ai reload della pagina (finché il tab resta aperto)
+ */
+function persistAuth(): void {
+  if (!import.meta.client) return
+  try {
+    if (user.value) {
+      sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user.value))
+    }
+  } catch (error) {
+    console.error(`[${COMPOSABLE_NAME}] Errore nel salvataggio della sessione`, error)
+  }
+}
+
+/**
+ * Rimuove la sessione salvata in sessionStorage
+ */
+function clearPersistedAuth(): void {
+  if (!import.meta.client) return
+  try {
+    sessionStorage.removeItem(AUTH_STORAGE_KEY)
+  } catch (error) {
+    console.error(`[${COMPOSABLE_NAME}] Errore nella pulizia della sessione`, error)
+  }
+}
+
+/**
+ * Ripristina la sessione salvata in sessionStorage, se presente
+ * Imposta utente e stato come autenticato, così un reload non richiede di riaccedere
+ */
+function restoreAuth(): void {
+  if (!import.meta.client) return
+  try {
+    const stored = sessionStorage.getItem(AUTH_STORAGE_KEY)
+    if (!stored) return
+
+    const parsed = JSON.parse(stored) as GoogleUser
+    if (parsed?.token) {
+      user.value = parsed
+      setAuthState('authenticated')
+      console.log(`[${COMPOSABLE_NAME}] Sessione ripristinata per ${parsed.profile?.email}`)
+    }
+  } catch (error) {
+    console.error(`[${COMPOSABLE_NAME}] Errore nel ripristino della sessione`, error)
+    clearPersistedAuth()
   }
 }
 
@@ -321,6 +381,10 @@ async function handleOAuthResponse(response: { access_token: string }): Promise<
     }
 
     setAuthState('authenticated')
+
+    // Persiste la sessione per sopravvivere ai reload della pagina
+    persistAuth()
+
     console.log(`[${COMPOSABLE_NAME}] Utente autenticato: ${user.value.profile.email}`)
   } catch (error) {
     console.error(`[${COMPOSABLE_NAME}] Errore elaborazione risposta OAuth2`, error)
@@ -409,11 +473,17 @@ function decodeJwt(token: string): {
  * Viene chiamata automaticamente da onMounted (quando il componente viene montato)
  */
 async function initialize(): Promise<void> {
+  // Evita inizializzazioni ripetute a ogni mount di pagina
+  if (initialized) return
+  initialized = true
+
   console.log(`[${COMPOSABLE_NAME}] Inizializzazione...`)
 
   try {
-    // Imposta lo stato di loading
-    setAuthState('loading')
+    // Imposta lo stato di loading solo se non c'è già una sessione ripristinata
+    if (authState.value === 'idle') {
+      setAuthState('loading')
+    }
 
     // Carica lo script GSI
     await loadGsiScript()
@@ -488,6 +558,9 @@ function signOut(): void {
   // Svuota il messaggio di errore
   errorMessage.value = ''
 
+  // Rimuove la sessione salvata
+  clearPersistedAuth()
+
   // Imposta lo stato come idle
   setAuthState('idle')
 
@@ -499,17 +572,12 @@ function signOut(): void {
 // ============================================================================
 
 /**
- * Hook chiamato quando il composable viene usato per la prima volta
- * 
- * In Nuxt 3 con Vue 3, onMounted viene chiamato quando il componente
- * viene montato nel DOM. Qui usiamo onMounted per:
- * 1. Inizializzare automaticamente l'autenticazione
- * 2. Caricare lo script GSI quando necessario
+ * All'avvio lato client ripristina l'eventuale sessione salvata in sessionStorage.
+ * Deve avvenire a livello di modulo (una sola volta) perché lo stato è singleton.
  */
-onMounted(() => {
-  console.log(`[${COMPOSABLE_NAME}] Montato - avvio inizializzazione`)
-  initialize()
-})
+if (import.meta.client) {
+  restoreAuth()
+}
 
 // ============================================================================
 // EXPORT
@@ -538,6 +606,11 @@ onMounted(() => {
  * // <div v-else>Ciao, {{ user?.profile.name }}</div>
  */
 export function useGoogleAuth() {
+  // Inizializza l'autenticazione una sola volta, al primo mount di un componente
+  onMounted(() => {
+    initialize()
+  })
+
   return {
     // Stato
     authState,

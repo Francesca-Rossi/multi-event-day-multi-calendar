@@ -2,6 +2,7 @@
 // Responsabilità: leggere e scrivere i calendari configurati in localStorage
 
 import type { CalendarConfig, CalendarEntry, Category } from '~/types/calendar'
+import { DEFAULT_CONFIG } from '~/config/defaultConfig'
 
 // Chiave usata per salvare i dati in localStorage
 const STORAGE_KEY = 'calendar_config'
@@ -42,33 +43,87 @@ export const useCalendarConfig = () => {
       // In un'applicazione Nuxt, usiamo useNuxtApp per accedere a useState
       // che gestisce correttamente il server/client side rendering
       const stored = localStorage.getItem(STORAGE_KEY)
-      
-      if (stored) {
-        // Parse dei dati salvati
-        const config: CalendarConfig = JSON.parse(stored)
-        
-        // Validazione: assicuriamoci che calendars esista e sia un array
-        if (Array.isArray(config.calendars)) {
-          calendars.value = config.calendars
-        } else {
-          // Se la struttura è corrotta, resetta a array vuoto
-          calendars.value = []
-        }
 
-        // Validazione: assicuriamoci che categories esista e sia un array
-        if (Array.isArray(config.categories)) {
-          categories.value = config.categories
-        } else {
-          // Se la struttura è corrotta, resetta a array vuoto
-          categories.value = []
+      if (!stored) {
+        // Primo accesso: nessuna configurazione salvata, applica il default
+        // (solo se il default non è vuoto, per non bloccare un futuro default)
+        if (DEFAULT_CONFIG.calendars.length > 0 || DEFAULT_CONFIG.categories.length > 0) {
+          applyDefaultConfig('replace')
         }
+        return
+      }
+
+      // Parse dei dati salvati
+      const config: CalendarConfig = JSON.parse(stored)
+
+      // Validazione: assicuriamoci che calendars esista e sia un array
+      if (Array.isArray(config.calendars)) {
+        calendars.value = config.calendars
+      } else {
+        // Se la struttura è corrotta, resetta a array vuoto
+        calendars.value = []
+      }
+
+      // Validazione: assicuriamoci che categories esista e sia un array
+      if (Array.isArray(config.categories)) {
+        categories.value = config.categories
+      } else {
+        // Se la struttura è corrotta, resetta a array vuoto
+        categories.value = []
       }
     } catch (error) {
       // Se c'è un errore (JSON corrotto, localStorage non disponibile, ecc.)
-      // Impostiamo un array vuoto e mostriamo un errore in console
+      // Ripieghiamo sulla configurazione di base e mostriamo un errore in console
       console.error('Errore nel caricamento della configurazione:', error)
-      calendars.value = []
-      categories.value = []
+      applyDefaultConfig('replace')
+    }
+  }
+
+  /**
+   * Clona la configurazione di base
+   * Evita di condividere i riferimenti con DEFAULT_CONFIG, che è una costante
+   */
+  const cloneDefaultConfig = (): CalendarConfig => ({
+    calendars: DEFAULT_CONFIG.calendars.map((cal) => ({ ...cal })),
+    categories: DEFAULT_CONFIG.categories.map((cat) => ({ ...cat }))
+  })
+
+  /**
+   * Applica la configurazione di base (DEFAULT_CONFIG)
+   *
+   * @param mode - 'replace' sostituisce tutta la configurazione attuale;
+   *               'merge' aggiunge solo gli elementi mancanti (confronto per id)
+   * @returns Contatori degli elementi risultanti, utili per feedback a video
+   */
+  const applyDefaultConfig = (mode: 'replace' | 'merge' = 'replace') => {
+    const preset = cloneDefaultConfig()
+
+    if (mode === 'replace') {
+      calendars.value = preset.calendars
+      categories.value = preset.categories
+    } else {
+      // Aggiungi i calendari mancanti (per id), senza toccare quelli esistenti
+      const existingCalendarIds = new Set(calendars.value.map((cal) => cal.id))
+      for (const cal of preset.calendars) {
+        if (!existingCalendarIds.has(cal.id)) {
+          calendars.value.push(cal)
+        }
+      }
+
+      // Aggiungi le categorie mancanti (per id)
+      const existingCategoryIds = new Set(categories.value.map((cat) => cat.id))
+      for (const cat of preset.categories) {
+        if (!existingCategoryIds.has(cat.id)) {
+          categories.value.push(cat)
+        }
+      }
+    }
+
+    saveConfig()
+
+    return {
+      calendars: calendars.value.length,
+      categories: categories.value.length
     }
   }
 
@@ -404,6 +459,7 @@ export const useCalendarConfig = () => {
     addCategory,
     updateCategory,
     removeCategory,
-    setCalendarCategory
+    setCalendarCategory,
+    applyDefaultConfig
   }
 }

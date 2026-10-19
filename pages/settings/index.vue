@@ -1,6 +1,15 @@
 <template>
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <h2 class="text-2xl font-bold text-gray-900 mb-6">Settings</h2>
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-2xl font-bold text-gray-900">Settings</h2>
+      <NuxtLink
+        to="/dashboard"
+        class="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors text-sm font-medium flex items-center gap-2"
+      >
+        <span>Home</span>
+        <span class="text-xl">🏠</span>
+      </NuxtLink>
+    </div>
 
     <!-- Authentication Status Section -->
     <UCard class="mb-6">
@@ -9,12 +18,6 @@
       </template>
       
       <div v-if="isAuthenticated" class="flex items-center space-x-4">
-        <img 
-          :src="user?.profile?.picture || ''" 
-          alt="User Avatar" 
-          class="w-12 h-12 rounded-full"
-          v-if="user?.profile?.picture"
-        />
         <div>
           <p class="text-sm font-medium text-gray-900">{{ user?.profile?.name }}</p>
           <p class="text-sm text-gray-500">{{ user?.profile?.email }}</p>
@@ -340,6 +343,28 @@
         </div>
       </div>
     </UCard>
+
+    <!-- Default Configuration Section -->
+    <UCard class="mt-6">
+      <template #header>
+        <h3 class="text-lg font-semibold text-gray-900">Configurazione di base</h3>
+      </template>
+
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-600">Ripristina i calendari e le categorie predefiniti</p>
+          <p class="text-xs text-gray-500 mt-1">
+            Le impostazioni attuali verranno sostituite dalla configurazione di base
+          </p>
+        </div>
+        <button
+          @click="handleApplyDefaultConfig"
+          class="px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 transition-colors text-sm font-medium whitespace-nowrap"
+        >
+          Ripristina configurazione di base
+        </button>
+      </div>
+    </UCard>
   </div>
 </template>
 
@@ -348,7 +373,7 @@ const route = useRoute()
 const router = useRouter()
 
 // Use composables
-const { calendars, categories, addCalendar, removeCalendar, updateDisplayName, moveCalendarUp, moveCalendarDown, addCategory, updateCategory, removeCategory, setCalendarCategory } = useCalendarConfig()
+const { calendars, categories, addCalendar, removeCalendar, updateDisplayName, moveCalendarUp, moveCalendarDown, addCategory, updateCategory, removeCategory, setCalendarCategory, applyDefaultConfig } = useCalendarConfig()
 const { signIn, signOut, authState, user, errorMessage: authErrorMessage, isAuthenticated } = useGoogleAuth()
 
 // State calendari
@@ -542,6 +567,17 @@ const handleCalendarCategoryChange = (calendarId, event) => {
 
 const calendarCountByCategory = (categoryId) => {
   return calendars.value.filter((cal) => cal.category === categoryId).length
+}
+
+// ---------------------------------------------------------------------------
+// Configurazione di base
+// ---------------------------------------------------------------------------
+
+const handleApplyDefaultConfig = () => {
+  if (confirm('Vuoi ripristinare la configurazione di base? Le impostazioni attuali verranno sostituite.')) {
+    const result = applyDefaultConfig('replace')
+    console.log('Configurazione di base applicata:', result)
+  }
 }
 
 // Watch for editing changes
