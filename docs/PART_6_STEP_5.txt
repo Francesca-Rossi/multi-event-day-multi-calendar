@@ -1,0 +1,101 @@
+﻿
+### Passo 6.5: Funzioni Helper per Colori e Nomi
+
+Aggiungi queste funzioni per gestire colori e nomi dei calendari:
+
+`javascript
+// Mappa ID calendario → colore (puoi personalizzare i colori)
+const calendarColorMap = {
+  'primary': '#4285F4', // Blu Google
+  // Aggiungi altri colori per i tuoi calendari
+}
+
+// Ottieni il colore per un calendario
+const getCalendarColor = (calendarId) => {
+  // Se c'è un colore specifico per questo ID, usalo
+  if (calendarColorMap[calendarId]) {
+    return calendarColorMap[calendarId]
+  }
+  
+  // Altrimenti genera un colore basato sull'ID (per diversificare)
+  const colors = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899']
+  const index = calendarId.hashCode() % colors.length
+  return colors[index]
+}
+
+// Ottieni il nome visualizzato per un calendario
+const getCalendarName = (calendarId) => {
+  const calendar = calendars.value.find(c => c.id === calendarId)
+  return calendar?.displayName || calendar?.id || 'Calendario sconosciuto'
+}
+
+// Funzione per tronc
+### Passo 6.5: Funzioni Helper per Colori e Nomi
+
+Aggiungi queste funzioni per gestire colori e nomi dei calendari:
+
+`javascript
+// Mappa ID calendario → colore (puoi personalizzare i colori)
+const calendarColorMap = {
+  'primary': '#4285F4', // Blu Google
+  // Aggiungi altri colori per i tuoi calendari
+}
+
+// Ottieni il colore per un calendario
+const getCalendarColor = (calendarId) => {
+  // Se c'è un colore specifico per questo ID, usalo
+  if (calendarColorMap[calendarId]) {
+    return calendarColorMap[calendarId]
+  }
+  
+  // Altrimenti genera un colore basato sull'ID (per diversificare)
+  const colors = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899']
+  const index = calendarId.hashCode() % colors.length
+  return colors[index]
+}
+
+// Ottieni il nome visualizzato per un calendario
+const getCalendarName = (calendarId) => {
+  const calendar = calendars.value.find(c => c.id === calendarId)
+  return calendar?.displayName || calendar?.id || 'Calendario sconosciuto'
+}
+
+// Funzione per troncare il testo
+const truncateText = (text, maxLength) => {
+  if (!text || text.length <= maxLength) return text
+  return text.substring(0, maxLength) + '...'
+}
+
+// Estensione per calcolare hash di una stringa (per generare colori consistenti)
+String.prototype.hashCode = function() {
+  let hash = 0
+  const str = this.toString()
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash // Converti in intero 32-bit
+  }
+  return Math.abs(hash)
+}
+`
+
+**Spiegazione:**
+
+1. **calendarColorMap**: Oggetto che mappa ID calendario a colori specifici
+   - Puoi personalizzare i colori per i tuoi calendari principali
+   - Es: primary → blu Google, work → verde, ecc.
+
+2. **getCalendarColor**: Funzione che:
+   - Cerca un colore specifico nella mappa
+   - Se non trova, genera un colore pseudo-casuale basato sull'ID
+   - Usa un algoritmo hash per garantire che lo stesso ID abbia sempre lo stesso colore
+
+3. **getCalendarName**: Cerca il nome visualizzato nel config dei calendari
+   - Se non trova, usa l'ID originale
+   - Se nemmeno quello, mostra "Calendario sconosciuto"
+
+4. **truncateText**: Taglia il testo lungo per evitare che occupi troppo spazio
+   - Utile per descrizioni lunghe degli eventi
+
+5. **hashCode**: Estensione di Stringa per calcolare un hash numerico
+   - Permette di generare colori consistenti basati sull'ID del calendario

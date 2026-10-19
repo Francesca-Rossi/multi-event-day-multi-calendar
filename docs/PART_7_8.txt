@@ -1,0 +1,128 @@
+﻿
+---
+
+## Parte 7: Configurazione Completa del Script
+
+Ora uniamo tutto nello script completo. Ecco il file completo pages/dashboard.vue con tutto il codice riunito.
+
+**File da creare:** pages/dashboard.vue
+
+Il file completo include:
+1. Template con tutti gli stati (loading, error, empty, success)
+2. Script setup con tutte le funzioni e computed properties
+3. Integrazione completa con useCalendarEvents composable
+
+Segui il piano passo-passo per costruire il file completo.
+
+---
+
+## Parte 8: Testing e Debug
+
+### Passo 8.1: Testare la Pagina
+
+Una volta creato il file, testa la pagina seguendo questi passaggi:
+
+1. **Avvia il server di sviluppo**:
+   `ash
+   npm run dev
+   `
+
+2. **Apri il browser** e vai a http://localhost:3000/dashboard
+
+3. **Verifica questi comportamenti:**
+   - La data odierna viene mostrata correttamente
+   - I bottoni Indietro e Avanti funzionano
+   - Gli eventi vengono caricati automaticamente
+   - Lo spinner appare mentre gli eventi vengono caricati
+   - Gli eventi vengono mostrati in or
+---
+
+## Parte 7: Configurazione Completa del Script
+
+Ora uniamo tutto nello script completo. Ecco il file completo pages/dashboard.vue con tutto il codice riunito.
+
+**File da creare:** pages/dashboard.vue
+
+Il file completo include:
+1. Template con tutti gli stati (loading, error, empty, success)
+2. Script setup con tutte le funzioni e computed properties
+3. Integrazione completa con useCalendarEvents composable
+
+Segui il piano passo-passo per costruire il file completo.
+
+---
+
+## Parte 8: Testing e Debug
+
+### Passo 8.1: Testare la Pagina
+
+Una volta creato il file, testa la pagina seguendo questi passaggi:
+
+1. **Avvia il server di sviluppo**:
+   `ash
+   npm run dev
+   `
+
+2. **Apri il browser** e vai a http://localhost:3000/dashboard
+
+3. **Verifica questi comportamenti:**
+   - La data odierna viene mostrata correttamente
+   - I bottoni Indietro e Avanti funzionano
+   - Gli eventi vengono caricati automaticamente
+   - Lo spinner appare mentre gli eventi vengono caricati
+   - Gli eventi vengono mostrati in ordine cronologico
+   - I bottoni di navigazione si disabilitano ai limiti
+
+### Passo 8.2: Debug degli Errori Comuni
+
+**Problema: Nessun evento caricato**
+
+**Cause possibili:**
+1. Non sei autenticato con Google
+2. Nessun calendario configurato
+3. Token OAuth2 scaduto
+
+**Soluzione:**
+- Vai alla pagina /settings
+- Clicca Sign In with Google
+- Aggiungi almeno un calendario con un Calendar ID valido
+- Torna alla Dashboard
+
+**Problema: Errore di caricamento**
+
+**Cause possibili:**
+1. Problema di rete
+2. Token OAuth2 non valido
+3. Calendario non trovato
+
+**Soluzione:**
+- Apri la console del browser (F12)
+- Leggi i messaggi di errore
+- Controlla che il token sia valido in /settings
+
+**Problema: Data non si aggiorna**
+
+**Cause possibili:**
+1. Reattività Vue non funziona correttamente
+2. currentDisplayDate non è un ref
+
+**Soluzione:**
+- Verifica che currentDisplayDate sia creato con ref()
+- Controlla che formattedSelectedDate sia creato con computed()
+
+### Passo 8.3: Strumenti di Debug
+
+Usa questi strumenti per debuggare:
+
+1. **Console del browser (F12)**:
+   - Guarda i log che abbiamo aggiunto con console.log()
+   - Vedi errori e warning
+
+2. **DevTools di Vue**:
+   - Estensione Chrome Vue.js devtools
+   - Ti permette di vedere lo stato reattivo in tempo reale
+   - Vedi quali computed properties si stanno aggiornando
+
+3. **Network Tab**:
+   - Vedi le chiamate API fatte all'API di Google
+   - Controlla tempi di risposta e errori HTTP

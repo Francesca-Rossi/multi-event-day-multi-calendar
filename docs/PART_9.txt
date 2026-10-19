@@ -1,0 +1,62 @@
+﻿
+---
+
+## Parte 9: Best Practices e Suggerimenti
+
+### Best Practices Applicate
+
+Abbiamo seguito queste best practices durante l'implementazione:
+
+1. **Separazione delle responsabilità:**
+   - Template: solo HTML e logica di visualizzazione
+   - Script: solo logica e gestione dati
+   - Composables: logica riutilizzabile
+
+2. **Gestione degli errori:**
+   - Ogni operazione asincrona ha un try/catch
+   - Message di errore chiari per l'utente
+   - Opzione per riprovare
+
+3. **Stati ben definiti:**
+   - Loading: spinner di caricamento
+   - Error: messaggio di errore + bottone riprova
+   - Empty: messaggio amichevole
+   - Success: lista di eventi
+
+4. **UX migliorata:**
+   - Bottoni disabilitati quando non servono
+   - Feedback visivo durante le operazioni
+   - Navigazione intuitiva
+
+5. **Codice mantenibile:**
+   - Funzioni piccole e focalizzate
+   - Commenti chiari
+   - Naming significativo
+
+### Suggerimenti per Estensioni Future
+
+Ecco alcune idee per migliorare ulteriormente la Dashboard:
+
+1. **Task 7 CalendarEventCard:**
+   - Crea un componente separato CalendarEventCard.vue
+   - Estrai il blocco HTML di ogni evento in un componente
+   - Passa l'evento come prop
+
+2. **Task 8 Date Navigation Controls:**
+   - Aggiungi un picker date (calendario visivo)
+   - Permetti di selezionare una data specifica
+   - Aggiungi indicatori visivi per giorni con eventi
+
+3. **Filtri e ordinamento:**
+   - Filtra eventi per tipo (tutti, lavoro, personale)
+   - Ordina per titolo invece che per ora
+   - Cerca eventi per parola chiave
+
+4. **Dettagli evento:**
+   - Cliccando su un evento, mostra tutti i dettagli
+   - Link all'evento originale su Google Calendar
+   - Opzione per aggiungere alle proprie notifiche
+
+5. **Dark mode:**
+   - Usa le classi dark: di Tailwind CSS
+   - Rispetta le preferenze del sistema operativo

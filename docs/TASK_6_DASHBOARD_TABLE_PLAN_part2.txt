@@ -1,0 +1,138 @@
+﻿---
+
+## Piano di Implementazione Passo-Passo
+
+---
+
+## Fase 1: Aggiornare il Composable useCalendarEvents
+
+### Problema Attuale
+
+Il composable attuale restituisce un array piatto di eventi, ma la tabella ha bisogno di accedere agli eventi per ogni calendario separatamente.
+
+### Soluzione: Restituire una Map<calendarId, GoogleCalendarEvent[]>
+
+#### Modifica 1: Cambiare il tipo di ritorno
+
+In composables/useCalendarEvents.ts, modifica lo stato degli eventi:
+
+`	ypescript
+// PRIMA (array piatto - NON VA BENE PER LA TABELLA)
+const events = ref<GoogleCalendarEvent[]>([])
+
+// DOPO (Map per calendarId -> eventi)
+const eventsByCalendar = ref<Map<string, GoogleCalendarEvent[]>>(new Map())
+`
+
+#### Modifica 2: Aggiornare la funzione fetchAllEvents()
+
+La funzione deve costruire una Map invece di un array piatto:
+
+`	ypescript
+async function fetchAllEvents(params: FetchEventsParams): Promise<FetchResult> {
+  const { date, calendars, token } = params
+  
+  try {
+    setFetchState('loading')
+    const timeRange = getTimeRangeForDate(date)
+    
+    // Recupera gli eventi da ogni calendario in parallelo
+    const promises = calendars.map((calendar: CalendarEntry) =>
+      fetchCalendarEvents(calendar.id, timeRange.startDateTime, timeRange.endDateTime, token)
+    )
+    
+    // Attendi tutte le richieste
+    const results = await Promise.allSettled(promises)
+    
+    // Costruisci una MAPPA: calendarId -> eventi
+    const map = new Map<string, GoogleCalendarEvent[]>()
+    
+    results.forEach((result, index) => {
+      const calendar = calendars[index]
+      
+      if (result.status === 'fulfilled') {
+        map.set(calendar.id, result.value)
+      } else {
+        // Anche se c'e' errore, inseriamo array vuoto
+        map.set(calendar.id, [])
+        console.warn(Errore fetch calendario :, result.reason)
+      }
+    })
+    
+    // Aggiorna lo stato con la Mappa invece dell'array
+    eventsByCalendar.value = map
+    selectedDate.value = date
+    setFetchState('success')
+    
+    return { events: [], error: null, fetchState: 'success' }
+  } catch (error) {
+    setFetchState('error', error instanceof Error ? error.message : 'Errore sconosciuto')
+    return { events: [], error: error, fetchState: 'error' }
+  }
+}
+`
+
+#### Modifica 3: Aggiornare l'export del composable
+
+`	ypescript
+export function useCalendarEvents() {
+  return {
+    eventsByCalendar,  // INVECE DI: events
+    selectedDate,
+    fetchState,
+    errorMessage,
+    isLoading,
+    hasError,
+    hasSuccess,
+    hasEvents,
+    fetchAllEvents,
+    fetchEventsForDate,
+    fetchTodayEvents,
+    formatTime,
+    formatDate,
+  }
+}
+`
+
+#### Modifica 4: Aggiornare computed hasEvents
+
+`	ypescript
+const hasEvents = computed(() => {
+  for (const [, calendarEvents] of eventsByCalendar.value.entries()) {
+    if (calendarEvents.length > 0) return true
+  }
+  return false
+})
+`
+
+### Spiegazione per Principianti: Cos'e' una Map?
+
+Una **Map** e' come un oggetto JavaScript, ma piu' facile da usare quando le chiavi sono stringhe dinamiche.
+
+`javascript
+// Oggetto normale
+const eventiPerCalendario = {
+  'calendario_abc123': [{/* evento */}],
+  'calendario_def456': [{/* evento */}]
+}
+
+// Map (piu' sicuro)
+const eventiPerCalendario = new Map([
+  ['calendario_abc123', [{/* evento */}]],
+  ['calendario_def456', [{/* evento */}]]
+])
+
+// Accedere agli eventi
+const eventiCalendarioA = eventiPerCalendario.get('calendario_abc123')
+
+// Verificare se esiste
+if (eventiPerCalendario.has('calendario_abc123')) {
+  console.log('Presente')
+}
+`
+
+**Perche' usare Map?**
+1. Mantiene l'ordine di inserimento
+2. Piu' performante per aggiungere/rimuovere elementi
+3. API chiara (get(), set(), has(), entries())
+4. Nessun problema con chiavi speciali
