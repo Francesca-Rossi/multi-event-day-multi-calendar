@@ -38,10 +38,14 @@ export interface CalendarConfig {
  * @property summary - Titolo/nome dell'evento
  * @property start - Data e ora di inizio (dateTime per eventi con orario, date per eventi whole-day)
  * @property end - Data e ora di fine (stessa logica di start)
+ * @property creator - Chi ha creato l'evento (opzionale, restituito dalla API Google)
+ * @property organizer - Organizzatore/proprietario dell'evento (opzionale)
  */
 export interface GoogleCalendarEvent {
   id: string
   summary: string
   start: { dateTime: string; date?: string }
   end: { dateTime: string; date?: string }
+  creator?: { email?: string; displayName?: string; self?: boolean }
+  organizer?: { email?: string; displayName?: string }
 }
