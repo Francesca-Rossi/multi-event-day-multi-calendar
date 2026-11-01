@@ -15,11 +15,13 @@ export interface Category {
  * - id: l'identificativo univoco del calendario (es. email per le risorse)
  * - displayName: il nome visualizzato dall'utente per questo calendario
  * - category: id della categoria assegnata (opzionale)
+ * - color: colore base in formato HEX per generare le sfumature degli eventi (opzionale)
  */
 export interface CalendarEntry {
   id: string
   displayName: string
   category?: string
+  color?: string
 }
 
 /**

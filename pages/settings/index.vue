@@ -211,6 +211,16 @@
           </select>
         </div>
 
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            Colore (Opzionale)
+          </label>
+          <CircularColorPicker v-model="newCalendarColor" />
+          <p class="mt-1 text-xs text-gray-500">
+            Colore di base per gli eventi di questo calendario
+          </p>
+        </div>
+
         <button
           type="submit"
           :disabled="!isValidCalendarId || addingCalendar"
@@ -250,10 +260,19 @@
               />
             </template>
             <template v-else>
-              <p class="text-sm font-medium text-gray-900 truncate">
-                {{ calendar.displayName || calendar.id }}
-              </p>
-              <p class="text-xs text-gray-500 truncate">{{ calendar.id }}</p>
+              <div class="flex items-center gap-3">
+                <CircularColorPicker
+                  :model-value="calendar.color || '#3B82F6'"
+                  size="sm"
+                  @update:model-value="updateCalendarColor(calendar.id, $event)"
+                />
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-gray-900 truncate">
+                    {{ calendar.displayName || calendar.id }}
+                  </p>
+                  <p class="text-xs text-gray-500 truncate">{{ calendar.id }}</p>
+                </div>
+              </div>
               <div class="mt-2">
                 <label :for="`category-${calendar.id}`" class="block text-xs font-medium text-gray-500 mb-1">
                   Categoria
@@ -373,16 +392,18 @@ const route = useRoute()
 const router = useRouter()
 
 // Use composables
-const { calendars, categories, addCalendar, removeCalendar, updateDisplayName, moveCalendarUp, moveCalendarDown, addCategory, updateCategory, removeCategory, setCalendarCategory, applyDefaultConfig } = useCalendarConfig()
+const { calendars, categories, addCalendar, removeCalendar, updateDisplayName, moveCalendarUp, moveCalendarDown, addCategory, updateCategory, removeCategory, setCalendarCategory, updateCalendarColor, applyDefaultConfig } = useCalendarConfig()
 const { signIn, signOut, authState, user, errorMessage: authErrorMessage, isAuthenticated } = useGoogleAuth()
 
 // State calendari
 const newCalendarId = ref('')
 const newCalendarDisplayName = ref('')
 const newCalendarCategoryId = ref('')
+const newCalendarColor = ref('')
 const addingCalendar = ref(false)
 const editingCalendarId = ref(null)
 const editingName = ref('')
+const editingColor = ref('')
 const errors = ref({})
 
 // State categorie
@@ -452,6 +473,7 @@ const handleAddCalendar = async () => {
     const id = newCalendarId.value.trim()
     const displayName = newCalendarDisplayName.value.trim() || undefined
     const categoryId = newCalendarCategoryId.value || undefined
+    const color = newCalendarColor.value || undefined
     
     addCalendar(id, displayName)
     
@@ -460,12 +482,18 @@ const handleAddCalendar = async () => {
       setCalendarCategory(id, categoryId)
     }
     
-    console.log('Calendar added successfully:', { id, displayName, category: categoryId })
+    // Assegna il colore se selezionato
+    if (color) {
+      updateCalendarColor(id, color)
+    }
+    
+    console.log('Calendar added successfully:', { id, displayName, category: categoryId, color })
     
     // Reset form
     newCalendarId.value = ''
     newCalendarDisplayName.value = ''
     newCalendarCategoryId.value = ''
+    newCalendarColor.value = ''
   } catch (error) {
     console.error('Error adding calendar:', error)
     errors.value.general = 'Failed to add calendar. Please try again.'

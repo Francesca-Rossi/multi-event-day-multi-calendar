@@ -124,19 +124,20 @@ function formatTimeRange(event: GoogleCalendarEvent): string {
 }
 
 // ============================================================================
-// Helper: colori eventi
+// Helper: colori eventi - colore identico per calendario
 // ============================================================================
 
-const eventColors = [
-  { bg: 'bg-blue-500', text: 'text-white' },
-  { bg: 'bg-green-500', text: 'text-white' },
-  { bg: 'bg-purple-500', text: 'text-white' },
-  { bg: 'bg-yellow-500', text: 'text-gray-900' },
-  { bg: 'bg-red-500', text: 'text-white' },
-  { bg: 'bg-teal-500', text: 'text-white' },
-  { bg: 'bg-pink-500', text: 'text-white' },
-  { bg: 'bg-indigo-500', text: 'text-white' },
-  { bg: 'bg-orange-500', text: 'text-white' },
+// Palette predefinita usata quando un calendario non ha colore assegnato
+const DEFAULT_CALENDAR_COLORS = [
+  '#3B82F6',
+  '#10B981',
+  '#8B5CF6',
+  '#F59E0B',
+  '#EF4444',
+  '#14B8A6',
+  '#EC4899',
+  '#6366F1',
+  '#F97316',
 ]
 
 function hashCode(str: string): number {
@@ -148,17 +149,52 @@ function hashCode(str: string): number {
   return hash
 }
 
-function colorIndex(event: GoogleCalendarEvent): number {
-  const hash = hashCode(event.id ?? event.summary ?? 'unknown')
-  return Math.abs(hash) % eventColors.length
+/**
+ * Converte colore HEX in HSL
+ */
+function hexToHsl(hex: string): [number, number, number] {
+  let r = 0, g = 0, b = 0
+  if (hex.length === 7) {
+    r = parseInt(hex.substring(1, 3), 16)
+    g = parseInt(hex.substring(3, 5), 16)
+    b = parseInt(hex.substring(5, 7), 16)
+  } else if (hex.length === 4) {
+    r = parseInt(hex[1]! + hex[1]!, 16)
+    g = parseInt(hex[2]! + hex[2]!, 16)
+    b = parseInt(hex[3]! + hex[3]!, 16)
+  }
+
+  r /= 255
+  g /= 255
+  b /= 255
+
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const l = (max + min) / 2
+
+  return [0, 0, Math.round(l * 100)]
 }
 
-function getEventColor(event: GoogleCalendarEvent): string {
-  return eventColors[colorIndex(event)]?.bg ?? 'bg-blue-500'
-}
+/**
+ * Restituisce il colore sfondo e testo per tutti gli eventi di un calendario.
+ * Se il calendario ha un colore assegnato, lo usa per tutti i suoi eventi.
+ * Altrimenti sceglie un colore predefinito basato sull'hash dell'ID calendario.
+ */
+function getEventColorStyle(calendarId: string, calendarColor?: string): { bg: string; text: string } {
+  let bg: string
 
-function getTextColor(event: GoogleCalendarEvent): string {
-  return eventColors[colorIndex(event)]?.text ?? 'text-white'
+  if (calendarColor) {
+    bg = calendarColor
+  } else {
+    // Scegli un colore predefinito consistente basato sull'ID calendario
+    const hash = hashCode(calendarId)
+    const index = Math.abs(hash) % DEFAULT_CALENDAR_COLORS.length
+    bg = DEFAULT_CALENDAR_COLORS[index]!
+  }
+
+  // Scegli testo bianco o scuro in base alla luminosità dello sfondo
+  const [, , l] = hexToHsl(bg)
+  return { bg, text: l > 60 ? '#1f2937' : '#ffffff' }
 }
 
 // ============================================================================
@@ -409,8 +445,7 @@ function tileStyle(pe: PositionedEvent): Record<string, string> {
               v-for="pe in positionedEventsByCal.get(c.id) || []"
               :key="pe.event.id"
               class="event-tile pointer-events-auto cursor-pointer rounded shadow-sm hover:brightness-110 transition-all overflow-hidden"
-              :class="[getEventColor(pe.event), getTextColor(pe.event)]"
-              :style="tileStyle(pe)"
+              :style="[tileStyle(pe), { backgroundColor: getEventColorStyle(c.id, c.color).bg, color: getEventColorStyle(c.id, c.color).text }]"
               :title="`${pe.event.summary}${creatorName(pe.event) ? ` — ${creatorName(pe.event)}` : ''} (${formatTimeRange(pe.event)})`"
             >
               <div class="flex flex-col items-center justify-center h-full px-1 py-0.5">
@@ -419,13 +454,13 @@ function tileStyle(pe: PositionedEvent): Record<string, string> {
                 </span>
                 <span
                   v-if="creatorName(pe.event)"
-                  class="text-[9px] opacity-80 mt-0.5 truncate max-w-full"
+                  class="text-[11px] opacity-80 mt-0.5 truncate max-w-full"
                 >
                   {{ creatorName(pe.event) }}
                 </span>
                 <span
                   v-if="!isAllDayEvent(pe.event) && formatTimeRange(pe.event)"
-                  class="text-[9px] opacity-80"
+                  class="text-[11px] opacity-80"
                 >
                   {{ formatTimeRange(pe.event) }}
                 </span>

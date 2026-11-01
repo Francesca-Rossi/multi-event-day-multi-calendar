@@ -22,32 +22,38 @@ export const DEFAULT_CONFIG: CalendarConfig = {
     {
       id: 'c_18884pjfmai5ug1nnm4r9av8l4gvs@resource.calendar.google.com',
       displayName: 'CO-WORKING',
-      category: 'primo-piano'
+      category: 'primo-piano',
+      color: '#3B82F6'
     },
     {
       id: 'c_1886tt540ih90joigjmn7lq4jpl8o@resource.calendar.google.com',
       displayName: 'DIGITAL LAB',
-      category: 'piano-terra'
+      category: 'piano-terra',
+      color: '#10B981'
     },
     {
       id: 'c_18866luuth3hmjqbls29aqqibb97a@resource.calendar.google.com',
       displayName: 'SALA RADIO',
-      category: 'primo-piano'
+      category: 'primo-piano',
+      color: '#8B5CF6'
     },
     {
       id: 'c_1884u5s228crog3vnjostthivppi4@resource.calendar.google.com',
       displayName: 'SALA VIDEO',
-      category: 'primo-piano'
+      category: 'primo-piano',
+      color: '#EF4444'
     },
     {
       id: 'c_188effju1b1gmg0amimf1mdtsjh7o@resource.calendar.google.com',
       displayName: 'SPAZIO X',
-      category: 'primo-piano'
+      category: 'primo-piano',
+      color: '#F59E0B'
     },
     {
       id: 'c_188ctdaumjckuim3ijhg8vrvb55kc@resource.calendar.google.com',
       displayName: 'SPAZIO ASCOLTO',
-      category: 'piano-terra'
+      category: 'piano-terra',
+      color: '#EC4899'
     }
   ]
 }
