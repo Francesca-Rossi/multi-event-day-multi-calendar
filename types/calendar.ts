@@ -15,11 +15,13 @@ export interface Category {
  * - id: l'identificativo univoco del calendario (es. email per le risorse)
  * - displayName: il nome visualizzato dall'utente per questo calendario
  * - category: id della categoria assegnata (opzionale)
+ * - color: colore base in formato HEX per generare le sfumature degli eventi (opzionale)
  */
 export interface CalendarEntry {
   id: string
   displayName: string
   category?: string
+  color?: string
 }
 
 /**
@@ -38,10 +40,14 @@ export interface CalendarConfig {
  * @property summary - Titolo/nome dell'evento
  * @property start - Data e ora di inizio (dateTime per eventi con orario, date per eventi whole-day)
  * @property end - Data e ora di fine (stessa logica di start)
+ * @property creator - Chi ha creato l'evento (opzionale, restituito dalla API Google)
+ * @property organizer - Organizzatore/proprietario dell'evento (opzionale)
  */
 export interface GoogleCalendarEvent {
   id: string
   summary: string
   start: { dateTime: string; date?: string }
   end: { dateTime: string; date?: string }
+  creator?: { email?: string; displayName?: string; self?: boolean }
+  organizer?: { email?: string; displayName?: string }
 }

@@ -410,6 +410,25 @@ export const useCalendarConfig = () => {
   }
 
   /**
+   * Aggiorna il colore base di un calendario
+   * Il colore è in formato HEX (es. "#3B82F6") e viene usato per generare
+   * le sfumature degli eventi di quel calendario
+   * 
+   * @param calendarId - L'ID del calendario
+   * @param color - Il nuovo colore in formato HEX, oppure undefined per rimuoverlo
+   */
+  const updateCalendarColor = (calendarId: string, color: string | undefined): void => {
+    const calendar = calendars.value.find((cal) => cal.id === calendarId)
+    if (!calendar) {
+      console.warn(`Calendario con ID ${calendarId} non trovato`)
+      return
+    }
+
+    calendar.color = color || undefined
+    saveConfig()
+  }
+
+  /**
    * Computed che raggruppa i calendari per categoria nell'ordine corretto
    * Restituisce un array di gruppi, ciascuno con:
    * - category: la categoria (o null per "Senza categoria")
@@ -460,6 +479,7 @@ export const useCalendarConfig = () => {
     updateCategory,
     removeCategory,
     setCalendarCategory,
+    updateCalendarColor,
     applyDefaultConfig
   }
 }
